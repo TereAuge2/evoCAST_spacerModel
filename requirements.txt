@@ -1,0 +1,31 @@
+# evoCAST spacer model — install: pip install -r requirements.txt
+# Python 3.10+ recommended (3.11–3.12 widely tested with sklearn stack).
+
+# --- Core (analyze_dataset, train_models, pc_loadings, simple_hypothesis_test) ---
+numpy>=1.24
+scipy>=1.10
+pandas>=2.0
+matplotlib>=3.7
+seaborn>=0.13
+scikit-learn>=1.3
+openpyxl>=3.1
+logomaker>=0.8
+
+# --- Optional features used when flags / scripts are enabled ---
+# UMAP embedding in analyze_dataset.py (--umap)
+umap-learn>=0.5
+
+# XGBRegressor in train_models.py (optional; skipped if not installed)
+xgboost>=2.0
+
+# Animated logo movies: interpretation/make_cluster_logo_movie.py
+imageio>=2.31
+# imageio-ffmpeg>=0.4  # optional: helps MP4 on systems without ffmpeg in PATH
+
+# --- Common extras (not imported by src/ scripts; useful for notebooks / later models) ---
+biopython>=1.83
+torch>=2.0
+transformers>=4.30
+
+
+wandb

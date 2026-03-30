@@ -1,0 +1,10 @@
+# Copy this file to ".wandb_env" in the repo root and add your key (one time).
+# ".wandb_env" is gitignored — do not commit it.
+#
+# Use the FULL API secret from https://wandb.ai/authorize (40+ characters).
+# A short "Key ID" or wandb_v1_... fragment alone will fail with: API key must have 40+ characters.
+#
+# export WANDB_API_KEY="paste_full_secret_here"
+# optional:
+# export WANDB_ENTITY="your-entity"
+# export WANDB_PROJECT="your-project"
