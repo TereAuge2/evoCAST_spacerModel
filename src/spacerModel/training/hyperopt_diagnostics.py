@@ -28,20 +28,100 @@ _ACCENT = "#0d1b2a"
 _GRID = "#d3d3d3"
 
 
-def _is_categorical_series(s: pd.Series, max_categories: int = 24) -> bool:
-    if s.dtype == object or str(s.dtype) == "bool":
+def _is_categorical_series(s: pd.Series) -> bool:
+    """
+    True for small discrete grids (batch size, kernel {3,5,7}, dropout levels).
+
+    False for sampled numeric scales (log-uniform C/gamma/lr, many distinct ints in a wide range)
+    so the x-axis can be continuous (scatter of trials).
+
+    Sklearn ``cv_results_`` tables often use ``object`` dtype for floats; those are coerced
+    so they are not misclassified as categorical.
+    """
+    v = s.dropna()
+    if v.empty:
         return True
-    nuniq = s.dropna().nunique()
+    if pd.api.types.is_bool_dtype(v):
+        return True
+
+    # Object columns may still be numeric (common for sklearn param DataFrames)
+    if v.dtype == object:
+        vc = pd.to_numeric(v, errors="coerce")
+        if vc.notna().all() and len(vc) == len(v):
+            v = vc
+        else:
+            return True
+
+    nuniq = int(v.nunique())
     if nuniq <= 1:
         return True
-    if nuniq <= max_categories:
-        # Few distinct ints (e.g. batch_size) → treat as categorical
-        if pd.api.types.is_integer_dtype(s):
-            return True
-        if pd.api.types.is_float_dtype(s) and nuniq <= 12:
-            # e.g. dropout in {0.0,0.1,0.2}
-            return len(np.unique(np.round(s.dropna().to_numpy(dtype=float), 6))) <= 12
+
+    if pd.api.types.is_integer_dtype(v):
+        iv = v.astype(np.int64, copy=False)
+        span = int(iv.max()) - int(iv.min())
+        if nuniq >= 10 or span > 50:
+            return False
+        return True
+
+    if pd.api.types.is_float_dtype(v):
+        xf = np.asarray(v, dtype=float)
+        n_round = len(np.unique(np.round(xf, 8)))
+        # Need ≥3 distinct values so tiny searches (e.g. 3 trials) still get a scatter axis;
+        # ≥4 was too strict and forced all floats into bar charts when n_iter was small.
+        if nuniq >= 3 or n_round >= 3:
+            return False
+        return True
+
     return False
+
+
+def _format_tick_label(x: Any) -> str:
+    """Short numeric labels on categorical bar x-axis (avoid 7+ decimal clutter)."""
+    try:
+        xf = float(x)
+        if not np.isfinite(xf):
+            return str(x)
+        ax_ = abs(xf)
+        if ax_ >= 1000 or (ax_ >= 1.0 and ax_ < 1000.0):
+            return f"{xf:.4g}"
+        if ax_ >= 0.01:
+            return f"{xf:.4g}"
+        return f"{xf:.6g}"
+    except (TypeError, ValueError):
+        return str(x)
+
+
+def _plot_continuous_hyperparam_vs_rmse(
+    ax: Any,
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    param_col: str,
+) -> None:
+    """Scatter (each trial); log-x if positive values span orders of magnitude."""
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    ok = np.isfinite(x) & np.isfinite(y)
+    x, y = x[ok], y[ok]
+    if x.size == 0:
+        return
+
+    ax.scatter(
+        x,
+        y,
+        c=_ACCENT,
+        edgecolors="black",
+        linewidths=0.4,
+        s=40,
+        alpha=0.85,
+        zorder=3,
+    )
+
+    ax.axhline(float(np.min(y)), color="grey", linestyle=":", linewidth=0.8, alpha=0.7)
+    ax.set_xlabel(param_col, fontsize=14)
+    pos = x[x > 0]
+    if pos.size >= 3 and float(np.nanmax(pos)) / float(np.nanmin(pos)) > 50.0:
+        ax.set_xscale("log")
 
 
 def plot_hyperparameter_vs_rmse(
@@ -53,8 +133,10 @@ def plot_hyperparameter_vs_rmse(
     title: str | None = None,
 ) -> None:
     """
-    Barplot (categorical) sorted by mean RMSE, or dot plot (continuous) for one hyperparameter.
-    Only uses rows present in df (values actually tried).
+    Categorical: bar = mean RMSE per level, jittered dots = each trial.
+
+    Continuous (sampled reals / many distinct ints): y = CV RMSE per trial, x = hyperparameter;
+    scatter only. Log-scaled x when positive values span ~>50×.
     """
     apply_hyperopt_plot_style()
     sub = df[[param_col, rmse_col]].dropna().copy()
@@ -66,24 +148,46 @@ def plot_hyperparameter_vs_rmse(
 
     if _is_categorical_series(sub[param_col]):
         agg = sub.groupby(param_col, dropna=False)[rmse_col].mean().sort_values(ascending=True)
-        x_labels = [str(x) for x in agg.index.tolist()]
+        x_labels = [_format_tick_label(x) for x in agg.index.tolist()]
         x_pos = np.arange(len(agg))
-        ax.bar(x_pos, agg.values, color=_GRID, edgecolor=_ACCENT, linewidth=0.8)
-        ax.set_xticks(x_pos)
-        ax.set_xticklabels(x_labels, rotation=45, ha="right", fontsize=11)
-    else:
+        cat_to_i = {k: i for i, k in enumerate(agg.index)}
+        ax.bar(x_pos, agg.values, color=_GRID, edgecolor=_ACCENT, linewidth=0.8, zorder=2, label="mean")
+        rng = np.random.default_rng(42)
+        xs: list[float] = []
+        ys: list[float] = []
+        for _, row in sub.iterrows():
+            k = row[param_col]
+            if k not in cat_to_i:
+                continue
+            i = cat_to_i[k]
+            xs.append(float(i) + float(rng.uniform(-0.32, 0.32)))
+            ys.append(float(row[rmse_col]))
         ax.scatter(
-            sub[param_col].to_numpy(),
-            sub[rmse_col].to_numpy(),
+            xs,
+            ys,
             c=_ACCENT,
             edgecolors="black",
-            linewidths=0.4,
-            s=40,
-            alpha=0.85,
-            zorder=3,
+            linewidths=0.35,
+            s=28,
+            alpha=0.9,
+            zorder=5,
+            label="trials",
         )
-        ax.set_xlabel(param_col, fontsize=14)
-        ax.axhline(sub[rmse_col].min(), color="grey", linestyle=":", linewidth=0.8, alpha=0.7)
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(x_labels, rotation=90, ha="center", fontsize=11)
+        if len(xs) > 0:
+            ax.legend(loc="upper right", fontsize=9, frameon=True)
+    else:
+        x_num = pd.to_numeric(sub[param_col], errors="coerce")
+        yv = sub[rmse_col].to_numpy(dtype=float)
+        xm = np.asarray(x_num, dtype=float)
+        ok = np.isfinite(xm) & np.isfinite(yv)
+        _plot_continuous_hyperparam_vs_rmse(
+            ax,
+            xm[ok],
+            yv[ok],
+            param_col=param_col,
+        )
 
     ax.set_ylabel("mean RMSE (CV)", fontsize=14)
     ax.set_title(t, fontsize=14)
@@ -123,8 +227,12 @@ def run_torch_hyperparam_overview(
     """
     For each explored hyperparameter column, write CSV + PNG.
     Returns list of param column names processed.
+
+    ``exclude_cols`` is **unioned** with mandatory exclusions (scores and ids), so callers
+    like sklearn tune scripts can pass ``{"iter", "std_rmse"}`` without accidentally
+    treating ``mean_rmse`` as a hyperparameter (which would break plotting).
     """
-    ex = exclude_cols or frozenset(
+    mandatory = frozenset(
         {
             "trial_idx",
             "mean_rmse",
@@ -134,6 +242,7 @@ def run_torch_hyperparam_overview(
             rmse_col,
         }
     )
+    ex = mandatory | frozenset(exclude_cols or ())
     param_cols = infer_param_columns(df_trials, set(ex))
     diag_dir = out_dir
     df_dir = diag_dir / "dataframes"

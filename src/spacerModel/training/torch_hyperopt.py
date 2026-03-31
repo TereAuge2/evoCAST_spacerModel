@@ -25,19 +25,21 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from spacerModel.models.hyperopt_diagnostics import (
+from spacerModel.training.hyperopt_diagnostics import (
     plot_learning_curve_epochs,
     plot_learning_curve_r2_epochs,
     run_torch_hyperparam_overview,
 )
-from spacerModel.models.run_paths import default_hyperopt_output_dir, default_run_name, slurm_job_id_prefix
-from spacerModel.models.train_torch import (
+from spacerModel.utils.run_paths import default_hyperopt_output_dir, default_run_name, slurm_job_id_prefix
+from spacerModel.training.search_param_rounding import round_dropout
+from spacerModel.training.train_torch import (
     apply_torch_hyperopt_row,
     retrain_best_torch_and_save_artifacts,
     resolve_device,
+    round_lr_wd,
     run_torch_cross_validation,
 )
-from spacerModel.models.wandb_util import finish_run, init_wandb_run
+from spacerModel.utils.wandb_util import finish_run, init_wandb_run, log_plot_images
 from spacerModel.simple_modeling.train_models import load_dataset
 
 _CNN_KEYS_TO_ARG: dict[str, str] = {
@@ -50,13 +52,13 @@ _CNN_KEYS_TO_ARG: dict[str, str] = {
 }
 
 _TORCH_TRAIN_DEFAULTS: dict[str, Any] = {
-    "lr": 1e-3,
-    "weight_decay": 1e-4,
+    "lr": round_lr_wd(1e-3),
+    "weight_decay": round_lr_wd(1e-4),
     "batch_size": 64,
     "dropout": 0.2,
-    "max_epochs": 200,
-    "patience": 20,
-    "min_delta": 0.0,
+    "max_epochs": 60,
+    "patience": 10,
+    "min_delta": 1e-4,
 }
 
 _MLP_HIDDEN_CHOICES = [
@@ -75,26 +77,20 @@ def _parse_mlp_hidden(s: str) -> tuple[int, ...]:
 
 def sample_random_mlp(rng: np.random.Generator) -> dict[str, Any]:
     return {
-        "lr": float(10 ** rng.uniform(-5.0, -2.0)),
-        "weight_decay": float(10 ** rng.uniform(-6.0, -3.0)),
+        "lr": round_lr_wd(float(10 ** rng.uniform(-5.0, -2.0))),
+        "weight_decay": round_lr_wd(float(10 ** rng.uniform(-6.0, -3.0))),
         "batch_size": int(rng.choice([32, 64, 128])),
-        "dropout": float(rng.choice([0.0, 0.1, 0.2, 0.3])),
-        "max_epochs": int(rng.integers(80, 251)),
-        "patience": int(rng.integers(8, 36)),
-        "min_delta": float(10 ** rng.uniform(-8.0, -4.0)),
+        "dropout": round_dropout(float(rng.choice([0.1, 0.2, 0.3]))),
         "mlp_hidden": str(rng.choice(_MLP_HIDDEN_CHOICES)),
     }
 
 
 def sample_random_cnn(rng: np.random.Generator) -> dict[str, Any]:
     return {
-        "lr": float(10 ** rng.uniform(-5.0, -2.0)),
-        "weight_decay": float(10 ** rng.uniform(-6.0, -3.0)),
+        "lr": round_lr_wd(float(10 ** rng.uniform(-5.0, -2.0))),
+        "weight_decay": round_lr_wd(float(10 ** rng.uniform(-6.0, -3.0))),
         "batch_size": int(rng.choice([32, 64, 128])),
-        "dropout": float(rng.choice([0.0, 0.1, 0.2, 0.3])),
-        "max_epochs": int(rng.integers(80, 251)),
-        "patience": int(rng.integers(8, 36)),
-        "min_delta": float(10 ** rng.uniform(-8.0, -4.0)),
+        "dropout": round_dropout(float(rng.choice([0.1, 0.2, 0.3]))),
         "cnn_conv1_channels": int(rng.integers(32, 129)),
         "cnn_conv2_channels": int(rng.integers(32, 129)),
         "cnn_head_hidden": int(rng.choice([128, 256, 384, 512])),
@@ -102,6 +98,60 @@ def sample_random_cnn(rng: np.random.Generator) -> dict[str, Any]:
         "cnn_kernel2": int(rng.choice([3, 5, 7])),
         "cnn_pool_out": int(rng.choice([4, 8, 16])),
     }
+
+
+def default_baseline_row_mlp() -> dict[str, Any]:
+    """Match ``_TORCH_TRAIN_DEFAULTS`` and a typical MLP hidden stack."""
+    return {
+        "lr": round_lr_wd(float(_TORCH_TRAIN_DEFAULTS["lr"])),
+        "weight_decay": round_lr_wd(float(_TORCH_TRAIN_DEFAULTS["weight_decay"])),
+        "batch_size": int(_TORCH_TRAIN_DEFAULTS["batch_size"]),
+        "dropout": round_dropout(float(_TORCH_TRAIN_DEFAULTS["dropout"])),
+        "mlp_hidden": "256,128",
+    }
+
+
+def default_baseline_row_cnn() -> dict[str, Any]:
+    """Match ``_TORCH_TRAIN_DEFAULTS`` and :class:`CNN1DRegressorNet` default architecture."""
+    return {
+        "lr": round_lr_wd(float(_TORCH_TRAIN_DEFAULTS["lr"])),
+        "weight_decay": round_lr_wd(float(_TORCH_TRAIN_DEFAULTS["weight_decay"])),
+        "batch_size": int(_TORCH_TRAIN_DEFAULTS["batch_size"]),
+        "dropout": round_dropout(float(_TORCH_TRAIN_DEFAULTS["dropout"])),
+        "cnn_conv1_channels": 64,
+        "cnn_conv2_channels": 64,
+        "cnn_head_hidden": 128,
+        "cnn_kernel1": 5,
+        "cnn_kernel2": 3,
+        "cnn_pool_out": 8,
+    }
+
+
+def _wandb_log_learning_curve_scalars(wandb_run: Any, df_curves: pd.DataFrame, trial_idx: int) -> None:
+    """
+    Log epoch-wise metrics for Charts. Uses ``lc_epoch`` as custom x-axis (via ``define_metric``),
+    not ``wandb.log(..., step=)``, so trial 2+ epochs are not dropped after trial 1 reaches ~200 steps.
+    """
+    if df_curves.empty:
+        return
+
+    mean_df = (
+        df_curves.groupby("epoch", as_index=False)
+        .agg({"train_loss": "mean", "val_loss": "mean", "val_rmse": "mean", "val_r2": "mean"})
+        .sort_values("epoch")
+    )
+    prefix = f"curves/trial_{trial_idx}/mean"
+    for _, row in mean_df.iterrows():
+        ep = int(row["epoch"])
+        wandb_run.log(
+            {
+                "lc_epoch": ep,
+                f"{prefix}/train_loss": float(row["train_loss"]),
+                f"{prefix}/val_loss": float(row["val_loss"]),
+                f"{prefix}/val_rmse": float(row["val_rmse"]),
+                f"{prefix}/val_r2": float(row["val_r2"]),
+            }
+        )
 
 
 def cnn_kwargs_from_sample_row(row: dict[str, Any]) -> dict[str, Any] | None:
@@ -191,14 +241,17 @@ def main(argv: list[str] | None = None) -> int:
     else:
         base_out = default_hyperopt_output_dir(modeling_root, "cnn" if args_base.model_kind == "cnn" else "mlp")
 
-    run_name = str(args_base.run_name).strip() or default_run_name()
+    run_name = str(args_base.run_name).strip() or default_run_name(args_base.model_kind)
     out_dir = base_out / run_name
     out_dir.mkdir(parents=True, exist_ok=True)
     log(f"Output directory: {out_dir}")
 
     n_iter = max(1, int(args_base.n_iter))
     rng = np.random.default_rng(int(args_base.random_state))
-    log(f"Random search: n_iter={n_iter} (model_kind={args_base.model_kind})")
+    log(
+        f"Random search: n_iter={n_iter} (model_kind={args_base.model_kind}); "
+        "trial 1 = default baseline, trials 2..n_iter = random"
+    )
 
     ds = load_dataset(
         Path(args_base.excel),
@@ -225,6 +278,22 @@ def main(argv: list[str] | None = None) -> int:
         entity=str(args_base.wandb_entity).strip() or None,
         project=str(args_base.wandb_project).strip() or None,
     )
+    if wandb_run is not None:
+        import wandb  # type: ignore[import-untyped]
+
+        try:
+            # Hyperparameter search summary: x-axis = trial index (restarts OK; separate from global step).
+            wandb.define_metric("hyperopt_trial")
+            wandb.define_metric("trial_idx", step_metric="hyperopt_trial")
+            wandb.define_metric("mean_rmse", step_metric="hyperopt_trial")
+            wandb.define_metric("mean_r2", step_metric="hyperopt_trial")
+            wandb.define_metric("mean_pearson_r", step_metric="hyperopt_trial")
+            # Learning curves: x-axis = epoch within each trial (must not use wandb.log(step=epoch)
+            # or trial 2+ is rejected after global step reached max_epochs).
+            wandb.define_metric("lc_epoch")
+            wandb.define_metric("curves/*", step_metric="lc_epoch")
+        except Exception:
+            pass
 
     results: list[dict[str, Any]] = []
     all_curves: list[pd.DataFrame] = []
@@ -233,10 +302,15 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         for ti in range(1, n_iter + 1):
-            if args_base.model_kind == "mlp":
-                row = sample_random_mlp(rng)
+            if ti == 1:
+                row = default_baseline_row_mlp() if args_base.model_kind == "mlp" else default_baseline_row_cnn()
+                log(f"Trial {ti}/{n_iter} (default baseline) {row}")
             else:
-                row = sample_random_cnn(rng)
+                if args_base.model_kind == "mlp":
+                    row = sample_random_mlp(rng)
+                else:
+                    row = sample_random_cnn(rng)
+                log(f"Trial {ti}/{n_iter} (random) {row}")
 
             ns = argparse.Namespace(**vars(deepcopy(args_base)))
             for k, v in _TORCH_TRAIN_DEFAULTS.items():
@@ -248,6 +322,12 @@ def main(argv: list[str] | None = None) -> int:
                 if k in _CNN_KEYS_TO_ARG:
                     continue
                 setattr(ns, k, v)
+            ns.max_epochs = int(_TORCH_TRAIN_DEFAULTS["max_epochs"])
+            ns.patience = int(_TORCH_TRAIN_DEFAULTS["patience"])
+            ns.min_delta = float(_TORCH_TRAIN_DEFAULTS["min_delta"])
+            ns.lr = round_lr_wd(float(ns.lr))
+            ns.weight_decay = round_lr_wd(float(ns.weight_decay))
+            ns.dropout = round_dropout(float(ns.dropout))
 
             if args_base.model_kind == "mlp":
                 ns.mlp_hidden = str(row["mlp_hidden"])
@@ -257,8 +337,6 @@ def main(argv: list[str] | None = None) -> int:
                 ns.mlp_hidden = "256,128"
                 mlp_hidden = (256, 128)
                 cnn_kw = cnn_kwargs_from_sample_row(row)
-
-            log(f"Trial {ti}/{n_iter} {row}")
 
             df_scores, df_curves = run_torch_cross_validation(
                 ns,
@@ -274,7 +352,10 @@ def main(argv: list[str] | None = None) -> int:
             )
             mean_rmse = float(df_scores["rmse"].mean())
             mean_r2 = float(df_scores["r2"].mean())
-            log(f"  -> mean_rmse={mean_rmse:.5f} mean_r2={mean_r2:.4f}")
+            mean_pearson_r = float(df_scores["pearson_r"].mean())
+            log(
+                f"  -> mean_rmse={mean_rmse:.5f} mean_r2={mean_r2:.4f} mean_pearson_r={mean_pearson_r:.4f}"
+            )
 
             lc_dir = out_dir / "learning_curves"
             by_trial = lc_dir / "by_trial"
@@ -300,25 +381,43 @@ def main(argv: list[str] | None = None) -> int:
 
                 wandb_run.log(
                     {
+                        "hyperopt_trial": float(ti),
                         "trial_idx": ti,
                         "mean_rmse": mean_rmse,
                         "mean_r2": mean_r2,
-                    },
-                    step=ti,
+                        "mean_pearson_r": mean_pearson_r,
+                    }
                 )
                 try:
-                    tbl = wandb.Table(dataframe=df_curves)
-                    wandb_run.log({f"learning_curve_trial_{ti}": tbl})
+                    _wandb_log_learning_curve_scalars(wandb_run, df_curves, ti)
                 except Exception as ex:
-                    log(f"wandb learning_curve table (trial {ti}) skipped: {ex}")
+                    log(f"wandb learning curve scalars (trial {ti}) skipped: {ex}")
+                try:
+                    log_plot_images(
+                        wandb_run,
+                        {
+                            f"plots/learning_curves/trial_{ti:04d}_val_rmse": lc_dir
+                            / "plots"
+                            / f"trial_{ti:04d}_val_rmse.png",
+                            f"plots/learning_curves/trial_{ti:04d}_val_r2": lc_dir
+                            / "plots"
+                            / f"trial_{ti:04d}_val_r2.png",
+                        },
+                    )
+                except Exception as ex:
+                    log(f"wandb learning curve images (trial {ti}) skipped: {ex}")
 
             record: dict[str, Any] = {
                 "trial_idx": ti,
                 "mean_rmse": mean_rmse,
                 "mean_r2": mean_r2,
+                "mean_pearson_r": mean_pearson_r,
                 "model_kind": args_base.model_kind,
             }
             record.update(row)
+            record["max_epochs"] = int(_TORCH_TRAIN_DEFAULTS["max_epochs"])
+            record["patience"] = int(_TORCH_TRAIN_DEFAULTS["patience"])
+            record["min_delta"] = float(_TORCH_TRAIN_DEFAULTS["min_delta"])
             results.append(record)
 
         df_trials = pd.DataFrame(results)
@@ -335,14 +434,42 @@ def main(argv: list[str] | None = None) -> int:
         log("Best trial by mean_rmse (CV):")
         for k, v in sorted(best_dict.items()):
             log(f"  {k}: {v}")
+        log(
+            f"Best hyperparameters — mean CV R²: {float(best['mean_r2']):.4f}, "
+            f"mean CV Pearson r: {float(best['mean_pearson_r']):.4f}"
+        )
         (out_dir / "best_hyperparameters.json").write_text(json.dumps(best_dict, indent=2, default=str), encoding="utf-8")
         log(f"Wrote {out_dir / 'best_hyperparameters.json'}")
 
-        excl = frozenset({"trial_idx", "mean_rmse", "mean_r2", "model_kind"})
+        excl = frozenset(
+            {
+                "trial_idx",
+                "mean_rmse",
+                "mean_r2",
+                "mean_pearson_r",
+                "model_kind",
+                "max_epochs",
+                "patience",
+                "min_delta",
+            }
+        )
         run_torch_hyperparam_overview(df_trials, out_dir / "hyperparam_sweep", exclude_cols=excl)
 
         if wandb_run is not None:
+            sweep_plot_dir = out_dir / "hyperparam_sweep" / "plots"
+            try:
+                imgs = {
+                    f"plots/hyperparam_sweep/{p.stem}": p
+                    for p in sorted(sweep_plot_dir.glob("*.png"))
+                    if p.is_file()
+                }
+                if imgs:
+                    log_plot_images(wandb_run, imgs)
+            except Exception as ex:
+                log(f"wandb hyperparam_sweep images skipped: {ex}")
             wandb_run.summary["best_mean_rmse"] = float(best["mean_rmse"])
+            wandb_run.summary["best_mean_r2"] = float(best["mean_r2"])
+            wandb_run.summary["best_mean_pearson_r"] = float(best["mean_pearson_r"])
             wandb_run.summary["best_row"] = best_dict
 
         if args_base.best_retrain:

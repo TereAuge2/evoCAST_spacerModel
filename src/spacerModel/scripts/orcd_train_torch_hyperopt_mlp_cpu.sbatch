@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
-# SBATCH: n_iter × CV is usually well under an hour for this stack; raise --time/--mem if needed.
-#SBATCH --job-name=evoCAST_torch_hopt
+# MLP hyperparameter search (torch_hyperopt) on CPU — mit_normal. No GPU queue.
+# W&B on by default (USE_WANDB=1). Set USE_WANDB=0 to skip logging.
+#
+# Default embedding kmer_gc_onehot (see train_models.build_feature_matrix):
+#   sparse stack of  (DNA one-hot) + (k-mer frequency columns for KMER_K) + (GC content).
+# With --raw-onehot default ON (RAW_ONEHOT unset or non-0): that full design is materialized to
+# one dense numeric matrix (one-hot + k-mers + GC) for the MLP. RAW_ONEHOT=0 uses SVD on the
+# sparse blocks instead of full dense features.
+#
+# Submit from repo root:
+#   sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_mlp_cpu.sbatch
+#
+# Examples:
+#   sbatch --export=ALL,N_ITER=40,RUN_NAME=my_mlp_run src/spacerModel/scripts/orcd_train_torch_hyperopt_mlp_cpu.sbatch
+#   sbatch --export=ALL,USE_WANDB=0 src/spacerModel/scripts/orcd_train_torch_hyperopt_mlp_cpu.sbatch
+
+#SBATCH --job-name=evoCAST_mlp_hopt
 #SBATCH --partition=mit_normal
 #SBATCH --time=02:00:00
 #SBATCH --cpus-per-task=4
@@ -10,7 +25,6 @@
 
 set -euo pipefail
 
-# Slurm copies this script to /var/spool/slurmd/.../slurm_script — dirname is not the repo.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
   REPO_ROOT="$(cd "${SLURM_SUBMIT_DIR}" && pwd)"
@@ -26,19 +40,15 @@ source "${REPO_ROOT}/src/spacerModel/scripts/load_wandb_env.sh"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${SLURM_CPUS_PER_TASK:-4}}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-$OMP_NUM_THREADS}"
 
-# RUN_NAME empty -> Python uses ${SLURM_JOB_ID}_<timestamp> under CNN_hyperparameter_tune or MLP_hyperparameter_tune
-# USE_WANDB=1 -> pass --use-wandb. W&B key: repo .wandb_env or ~/.wandb_env (see .wandb_env.example)
 EXCEL="${EXCEL:-output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx}"
 SPLIT_COL="${SPLIT_COL:-Split}"
 EMBEDDING="${EMBEDDING:-kmer_gc_onehot}"
 KMER_K="${KMER_K:-2}"
 RUN_NAME="${RUN_NAME:-}"
-MODEL_KIND="${MODEL_KIND:-mlp}"
-DEVICE="${DEVICE:-auto}"
-N_ITER="${N_ITER:-40}"
-USE_WANDB="${USE_WANDB:-0}"
+DEVICE="${DEVICE:-cpu}"
+N_ITER="${N_ITER:-100}"
+USE_WANDB="${USE_WANDB:-1}"
 EXTRA_ARGS="${EXTRA_ARGS:-}"
-# RAW_ONEHOT=0 -> pass --no-raw-onehot (SVD on sparse); unset/1 -> Python default (dense)
 RAW_ONEHOT="${RAW_ONEHOT:-}"
 
 mkdir -p logs
@@ -55,13 +65,13 @@ if [[ "${RAW_ONEHOT}" == "0" ]]; then
   RAW_CLI=(--no-raw-onehot)
 fi
 
-python -u -m spacerModel.models.torch_hyperopt \
+python -u -m spacerModel.training.torch_hyperopt \
   --excel "$EXCEL" \
   --split-col "$SPLIT_COL" \
   --embedding "$EMBEDDING" \
   --kmer-k "$KMER_K" \
-  --run-name "$RUN_NAME" \
-  --model-kind "$MODEL_KIND" \
+  ${RUN_NAME:+--run-name "$RUN_NAME"} \
+  --model-kind mlp \
   --device "$DEVICE" \
   --n-iter "$N_ITER" \
   "${WANDB_CLI[@]}" \

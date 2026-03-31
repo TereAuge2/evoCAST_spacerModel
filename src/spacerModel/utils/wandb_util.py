@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 DEFAULT_ENTITY = "teresa_augustin-harvard-university"
@@ -39,6 +40,21 @@ def init_wandb_run(
         config=config,
         tags=tag_list or None,
     )
+
+
+def log_plot_images(wandb_run: Any, key_to_path: dict[str, Path]) -> None:
+    """Upload saved PNGs to the run Media panel (keys become panel titles)."""
+    if wandb_run is None or not key_to_path:
+        return
+    import wandb  # type: ignore[import-untyped]
+
+    payload: dict[str, Any] = {}
+    for key, path in key_to_path.items():
+        p = Path(path)
+        if p.is_file():
+            payload[key] = wandb.Image(str(p))
+    if payload:
+        wandb_run.log(payload)
 
 
 def finish_run(run: Any) -> None:

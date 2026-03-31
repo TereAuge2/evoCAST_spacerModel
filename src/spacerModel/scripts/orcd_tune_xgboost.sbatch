@@ -2,28 +2,36 @@
 #SBATCH --job-name=evoCAST_tune_xgb
 #SBATCH --partition=mit_normal
 #SBATCH --time=02:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=16G
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=8G
 #SBATCH --output=logs/slurm-%x-%j.out
 #SBATCH --error=logs/slurm-%x-%j.err
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+if [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
+  REPO_ROOT="$(cd "${SLURM_SUBMIT_DIR}" && pwd)"
+else
+  REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+fi
 export PYTHONPATH="${REPO_ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
 cd "${REPO_ROOT}"
 
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/src/spacerModel/scripts/load_wandb_env.sh"
+
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${SLURM_CPUS_PER_TASK:-8}}"
 
+# W&B on by default (USE_WANDB=0 to skip). Loads REPO_ROOT/.wandb_env if present.
 # RUN_NAME empty -> job id + timestamp under output/modeling/xgboost_hyperparameter_tune/
 EXCEL="${EXCEL:-output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx}"
 SPLIT_COL="${SPLIT_COL:-Split}"
 EMBEDDING="${EMBEDDING:-kmer_gc_onehot}"
 KMER_K="${KMER_K:-2}"
 RUN_NAME="${RUN_NAME:-}"
-N_ITER="${N_ITER:-40}"
-USE_WANDB="${USE_WANDB:-0}"
+N_ITER="${N_ITER:-200}"
+USE_WANDB="${USE_WANDB:-1}"
 # RAW_ONEHOT=0 -> --no-raw-onehot
 RAW_ONEHOT="${RAW_ONEHOT:-}"
 EXTRA_ARGS="${EXTRA_ARGS:-}"
@@ -42,7 +50,7 @@ if [[ "${RAW_ONEHOT}" == "0" ]]; then
   RAW_CLI=(--no-raw-onehot)
 fi
 
-python -u -m spacerModel.models.tune_xgboost \
+python -u -m spacerModel.training.tune_xgboost \
   --excel "$EXCEL" \
   --split-col "$SPLIT_COL" \
   --embedding "$EMBEDDING" \

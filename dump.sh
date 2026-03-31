@@ -1,3 +1,20 @@
+# --- Git / GitHub (run from repo root: 2603_evoCAST_spacer_model) ---
+# Remote (SSH): git@github.com:TereAuge2/evoCAST_spacerModel.git
+#   HTTPS URL (same repo): https://github.com/TereAuge2/evoCAST_spacerModel
+# First-time clone:  git clone git@github.com:TereAuge2/evoCAST_spacerModel.git
+# Day to day:
+#   git status
+#   git add -A
+#   git commit -m "Short message describing the change"
+#   git push origin main
+# If push asks for a password over HTTPS, use SSH remote instead (see above) or a GitHub PAT.
+# Do not commit secrets: .wandb_env is gitignored; copy from .wandb_env.example if needed.
+# Large/generated dirs are ignored (see .gitignore): output/, logs/, wandb/
+
+# Quick import / CLI checks (run in an interactive session with evoCAST; PYTHONPATH=src):
+#   python -m spacerModel.training.train_torch --help
+#   python -m spacerModel.training.torch_hyperopt --help
+
 # Requesting a single core for an interactive job for 1 hour
 salloc -t 00:10:00 -p mit_normal
 
@@ -49,15 +66,16 @@ python src/spacerModel/data/analyze_dataset.py --splits-excel output/data_proces
 sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_cpu_test.sbatch
 # GPU (mit_normal_gpu): sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_gpu_test.sbatch
 
-#other models:
-sbatch --export=ALL,MODEL_KIND=cnn,RUN_NAME=CNN_hyper_test src/spacerModel/scripts/orcd_train_torch_hyperopt.sbatch
-sbatch --export=ALL,MODEL_KIND=mlp,RUN_NAME=MLP_hyper_test src/spacerModel/scripts/orcd_train_torch_hyperopt.sbatch
+# Full torch hyperopt on CPU (W&B on by default; USE_WANDB=0 to skip):
+sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_cnn_cpu.sbatch
+sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_mlp_cpu.sbatch
 
 #SVR
-sbatch --export=ALL,MODEL_KIND=svr,RUN_NAME=SVR_hyper_test src/spacerModel/scripts/orcd_train_torch_hyperopt.sbatch
+sbatch src/spacerModel/scripts/orcd_tune_svr_kernel.sbatch
 
+#XGboost
+sbatch src/spacerModel/scripts/orcd_tune_xgboost.sbatch
 
 #plot hyperparameter
-
-python -m src.spacerModel.models.plot_hyperopt_predictions \
+python src/spacerModel/training/plot_hyperopt_predictions.py \
   --run-dir output/modeling/CNN_hyperparameter_tune/11074812_20260327_162051

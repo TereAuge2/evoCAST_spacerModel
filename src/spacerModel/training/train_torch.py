@@ -26,7 +26,8 @@ from sklearn.model_selection import GroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from spacerModel.models.models import CNN1DRegressorNet, MLPRegressorNet, infer_cnn_in_channels, to_channel_first
+from spacerModel.models import CNN1DRegressorNet, MLPRegressorNet, infer_cnn_in_channels, to_channel_first
+from spacerModel.training.search_param_rounding import round_dropout
 from spacerModel.simple_modeling.train_models import (
     Dataset,
     build_feature_matrix,
@@ -334,14 +335,19 @@ def dense_from_embedding(X_part: np.ndarray | sparse.csr_matrix, args: argparse.
     return X_d
 
 
+def round_lr_wd(x: float) -> float:
+    """Round learning rate and weight decay to 5 decimal places before training."""
+    return round(float(x), 5)
+
+
 _TORCH_HYPEROPT_DEFAULTS: dict[str, Any] = {
-    "lr": 1e-3,
-    "weight_decay": 1e-4,
+    "lr": round_lr_wd(1e-3),
+    "weight_decay": round_lr_wd(1e-4),
     "batch_size": 64,
     "dropout": 0.2,
-    "max_epochs": 200,
-    "patience": 20,
-    "min_delta": 0.0,
+    "max_epochs": 60,
+    "patience": 10,
+    "min_delta": 1e-4,
 }
 
 _CNN_GRID_KEYS_TO_ARG: dict[str, str] = {
@@ -367,7 +373,7 @@ def apply_torch_hyperopt_row(
         if not hasattr(ns, k):
             setattr(ns, k, v)
     for k, v in row.items():
-        if k in ("grid_idx", "trial_idx", "mean_rmse", "mean_r2", "model_kind", "trial"):
+        if k in ("grid_idx", "trial_idx", "mean_rmse", "mean_r2", "mean_pearson_r", "model_kind", "trial"):
             continue
         if k == "mlp_hidden":
             continue
@@ -376,6 +382,13 @@ def apply_torch_hyperopt_row(
         if isinstance(v, (float, np.floating)) and np.isnan(v):
             continue
         setattr(ns, k, v)
+    # Training controls were not tuned; always use current defaults.
+    ns.max_epochs = int(_TORCH_HYPEROPT_DEFAULTS["max_epochs"])
+    ns.patience = int(_TORCH_HYPEROPT_DEFAULTS["patience"])
+    ns.min_delta = float(_TORCH_HYPEROPT_DEFAULTS["min_delta"])
+    ns.lr = round_lr_wd(float(ns.lr))
+    ns.weight_decay = round_lr_wd(float(ns.weight_decay))
+    ns.dropout = round_dropout(float(ns.dropout))
     if model_kind == "mlp":
         if "mlp_hidden" not in row:
             raise KeyError("MLP grid row must include mlp_hidden")
@@ -783,12 +796,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--output-dir", default="output/modeling")
     ap.add_argument("--run-name", default="", help="Subfolder under output-dir")
     ap.add_argument("--model-kind", choices=["mlp", "cnn"], required=True)
-    ap.add_argument("--max-epochs", type=int, default=200)
+    ap.add_argument("--max-epochs", type=int, default=60)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--weight-decay", type=float, default=1e-4)
-    ap.add_argument("--patience", type=int, default=20)
-    ap.add_argument("--min-delta", type=float, default=0.0)
+    ap.add_argument("--patience", type=int, default=10)
+    ap.add_argument("--min-delta", type=float, default=1e-4)
     ap.add_argument("--mlp-hidden", default="256,128", help="Comma-separated hidden sizes for MLP")
     ap.add_argument("--dropout", type=float, default=0.2)
     ap.add_argument("--cnn-conv1-channels", type=int, default=None, help="CNN only: first conv width")
@@ -803,6 +816,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--eval-held-out-test", action="store_true", help="Retrain on all CV rows and evaluate on non-cv test rows")
     ap.add_argument("--no-plots", action="store_true", help="Skip regression plots (faster)")
     args = ap.parse_args(argv)
+    args.lr = round_lr_wd(float(args.lr))
+    args.weight_decay = round_lr_wd(float(args.weight_decay))
+    args.dropout = round_dropout(float(args.dropout))
 
     if args.model_kind == "cnn" and args.embedding != "onehot":
         raise SystemExit(

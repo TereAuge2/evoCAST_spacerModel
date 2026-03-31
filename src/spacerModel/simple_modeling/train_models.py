@@ -346,26 +346,32 @@ def plot_cv_summary(df_scores: pd.DataFrame, outpath: Path, *, title: str) -> No
         mpl.rcParams["font.family"] = "DejaVu Sans"
     mpl.rcParams["font.size"] = 14
 
-    dfm = (
-        df_scores.groupby("model", as_index=False)[["rmse", "mae", "r2", "pearson_r", "spearman_rho", "ef10"]]
-        .agg(["mean", "std"])
-        .reset_index()
-    )
+    metrics_cols = ["rmse", "mae", "r2", "pearson_r", "spearman_rho", "ef10"]
+    # If each model appears only once (e.g. test-set evaluation), plot raw values (no "mean across folds").
+    # Otherwise, summarize as mean ± std across folds.
+    per_model_n = df_scores.groupby("model").size()
+    singleton_per_model = bool((per_model_n == 1).all())
 
-    # Flatten columns safely (keeps "model" as "model")
-    flat_cols: list[str] = []
-    for c in dfm.columns:
-        if isinstance(c, tuple):
-            a, b = c
-            if b == "":
-                flat_cols.append(str(a))
-            elif a == "model":
-                flat_cols.append("model")
+    if singleton_per_model:
+        dfm = df_scores.groupby("model", as_index=False)[metrics_cols].first()
+    else:
+        dfm = df_scores.groupby("model", as_index=False)[metrics_cols].agg(["mean", "std"]).reset_index()
+
+    if not singleton_per_model:
+        # Flatten columns safely (keeps "model" as "model")
+        flat_cols: list[str] = []
+        for c in dfm.columns:
+            if isinstance(c, tuple):
+                a, b = c
+                if b == "":
+                    flat_cols.append(str(a))
+                elif a == "model":
+                    flat_cols.append("model")
+                else:
+                    flat_cols.append(f"{a}_{b}")
             else:
-                flat_cols.append(f"{a}_{b}")
-        else:
-            flat_cols.append(str(c))
-    dfm.columns = flat_cols
+                flat_cols.append(str(c))
+        dfm.columns = flat_cols
 
     metrics_info: list[tuple[str, str, bool]] = [
         ("rmse", "RMSE", True),  # lower is better
@@ -378,67 +384,83 @@ def plot_cv_summary(df_scores: pd.DataFrame, outpath: Path, *, title: str) -> No
     outpath.parent.mkdir(parents=True, exist_ok=True)
 
     for metric_key, metric_label, lower_is_better in metrics_info:
-        mean_col = f"{metric_key}_mean"
-        std_col = f"{metric_key}_std"
-        if mean_col not in dfm.columns or std_col not in dfm.columns:
-            continue
+        if singleton_per_model:
+            val_col = metric_key
+            if val_col not in dfm.columns:
+                continue
+        else:
+            mean_col = f"{metric_key}_mean"
+            std_col = f"{metric_key}_std"
+            if mean_col not in dfm.columns or std_col not in dfm.columns:
+                continue
 
         # Sort each plot by its own metric
-        order = dfm.sort_values(mean_col, ascending=lower_is_better)["model"].tolist()
+        sort_col = (metric_key if singleton_per_model else mean_col)
+        order = dfm.sort_values(sort_col, ascending=lower_is_better)["model"].tolist()
 
         # Original figure size (width_cm × height_cm).
         fig, ax = plt.subplots(figsize=(18.0 / 2.54, 12.0 / 2.54))
-        sns.barplot(data=dfm, x="model", y=mean_col, order=order, color="black", alpha=0.5, ax=ax)
+        y_col = metric_key if singleton_per_model else mean_col
+        sns.barplot(data=dfm, x="model", y=y_col, order=order, color="black", alpha=0.5, ax=ax)
 
         x_pos = np.arange(len(order))
-        y = dfm.set_index("model").loc[order, mean_col].to_numpy(dtype=float)
-        yerr = dfm.set_index("model").loc[order, std_col].to_numpy(dtype=float)
-        ax.errorbar(x_pos, y, yerr=yerr, fmt="none", ecolor="black", elinewidth=1.0, capsize=3, capthick=1.0)
+        y = dfm.set_index("model").loc[order, y_col].to_numpy(dtype=float)
+        if not singleton_per_model:
+            yerr = dfm.set_index("model").loc[order, std_col].to_numpy(dtype=float)
+            ax.errorbar(x_pos, y, yerr=yerr, fmt="none", ecolor="black", elinewidth=1.0, capsize=3, capthick=1.0)
 
-        # Overlay per-fold dots (scatter) on top of the mean ± std bars.
-        # We jitter x slightly to avoid full overlap of identical values.
-        rng = np.random.default_rng(0)
-        for xi, model_name in zip(x_pos, order):
-            y_folds = (
-                df_scores.loc[df_scores["model"] == model_name, metric_key]
-                .to_numpy(dtype=float)
-            )
-            if y_folds.size == 0:
-                continue
-            jitter = rng.uniform(-0.15, 0.15, size=y_folds.size)
-            ax.scatter(
-                xi + jitter,
-                y_folds,
-                color="black",
-                s=14,
-                alpha=0.85,
-                zorder=4,
-            )
+        if not singleton_per_model:
+            # Overlay per-fold dots (scatter) on top of the mean ± std bars.
+            # We jitter x slightly to avoid full overlap of identical values.
+            rng = np.random.default_rng(0)
+            for xi, model_name in zip(x_pos, order):
+                y_folds = df_scores.loc[df_scores["model"] == model_name, metric_key].to_numpy(dtype=float)
+                if y_folds.size == 0:
+                    continue
+                jitter = rng.uniform(-0.15, 0.15, size=y_folds.size)
+                ax.scatter(
+                    xi + jitter,
+                    y_folds,
+                    color="black",
+                    s=14,
+                    alpha=0.85,
+                    zorder=4,
+                )
 
-        # Add the mean score label beneath the (mean ± std) errorbar.
-        # Anchor at y = mean - std, with a small downward offset for readability.
+        # Add score label (always show value on bar).
         y_bottom, y_top = ax.get_ylim()
         y_span_ylim = float(y_top - y_bottom)
-        text_offset = 0.04 * y_span_ylim if y_span_ylim != 0 else 0.04
-        min_y = y_bottom + 0.0005 * y_span_ylim if y_span_ylim != 0 else y_bottom
-        for xi, y_mean, y_std in zip(x_pos, y, yerr):
-            y_text = (y_mean - y_std) - text_offset
-            y_text = max(y_text, min_y)
-            ax.text(
-                xi,
-                y_text,
-                f"{y_mean:.2f}",
-                ha="center",
-                va="top",
-                fontsize=10,
-            )
+        text_offset = 0.03 * y_span_ylim if y_span_ylim != 0 else 0.03
+        if singleton_per_model:
+            for xi, yv in zip(x_pos, y):
+                ax.text(
+                    xi,
+                    float(yv) + text_offset,
+                    f"{float(yv):.2f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=10,
+                )
+        else:
+            min_y = y_bottom + 0.0005 * y_span_ylim if y_span_ylim != 0 else y_bottom
+            for xi, y_mean, y_std in zip(x_pos, y, yerr):
+                y_text = (y_mean - y_std) - (0.04 * y_span_ylim if y_span_ylim != 0 else 0.04)
+                y_text = max(y_text, min_y)
+                ax.text(
+                    xi,
+                    y_text,
+                    f"{y_mean:.2f}",
+                    ha="center",
+                    va="top",
+                    fontsize=10,
+                )
 
         # Caller passes something like "<split> CV summary (RMSE)"; strip the placeholder
         # "(RMSE)" and let the metric_label below become the 2nd line.
         title_clean = title.replace(" (RMSE)", "")
         ax.set_title(f"{title_clean}\n{metric_label}")
         ax.set_xlabel("Model")
-        ax.set_ylabel(f"{metric_label} (mean ± std across folds)")
+        ax.set_ylabel(f"{metric_label} (value)" if singleton_per_model else f"{metric_label} (mean ± std across folds)")
         ax.tick_params(axis="both", which="major", labelsize=10)
         plt.setp(ax.get_xticklabels(), rotation=90, ha="center", va="top")
         sns.despine(ax=ax)

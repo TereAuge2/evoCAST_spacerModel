@@ -23,9 +23,26 @@ def slurm_job_id_prefix() -> str:
     return jid if jid else "local"
 
 
-def default_run_name() -> str:
-    """Folder name prefix: <job_id>_<timestamp>."""
-    return f"{slurm_job_id_prefix()}_{datetime.now():%Y%m%d_%H%M%S}"
+def default_run_name(model_kind: str | None = None) -> str:
+    """
+    Default run folder name: ``<job_id>_<timestamp>`` plus optional ``_<KIND>``
+    (e.g. ``12345_20260327_143022_CNN``).
+    """
+    base = f"{slurm_job_id_prefix()}_{datetime.now():%Y%m%d_%H%M%S}"
+    if model_kind is None:
+        return base
+    mk = str(model_kind).strip()
+    if not mk:
+        return base
+    label = {
+        "cnn": "CNN",
+        "mlp": "MLP",
+        "svr": "SVR",
+        "xgboost": "XGBOOST",
+    }.get(mk.lower())
+    if label is None:
+        label = mk.upper().replace(" ", "_")
+    return f"{base}_{label}"
 
 
 def default_hyperopt_output_dir(modeling_root: str | Path, tune_kind: str) -> Path:

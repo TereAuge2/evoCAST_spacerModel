@@ -43,7 +43,7 @@ mkdir -p logs
 module load miniforge
 mamba activate evoCAST
 
-python -u -m spacerModel.models.train_torch \
+python -u -m spacerModel.training.train_torch \
   --excel "$EXCEL" \
   --split-col "$SPLIT_COL" \
   --embedding "$EMBEDDING" \
@@ -57,9 +57,9 @@ python -u -m spacerModel.models.train_torch \
   --weight-decay 1.2923469377951069e-05 \
   --batch-size 32 \
   --dropout 0.1 \
-  --max-epochs 216 \
-  --patience 13 \
-  --min-delta 3.3089181258956105e-08 \
+  --max-epochs 200 \
+  --patience 10 \
+  --min-delta 1e-4 \
   --cnn-conv1-channels 98 \
   --cnn-conv2-channels 78 \
   --cnn-head-hidden 256 \

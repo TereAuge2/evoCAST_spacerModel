@@ -6,8 +6,8 @@ Writes per split (cv / test):
   regression_<split>_plot2.png  — hexbin ("plot2" style in this project)
 
 Examples (from repository root):
-  python src/spacerModel/models/plot_hyperopt_predictions.py --run-dir output/modeling/CNN_hyperparameter_tune/<run>
-  PYTHONPATH=src python -m spacerModel.models.plot_hyperopt_predictions --run-dir ...
+  python src/spacerModel/training/plot_hyperopt_predictions.py --run-dir output/modeling/CNN_hyperparameter_tune/<run>
+  PYTHONPATH=src python -m spacerModel.training.plot_hyperopt_predictions --run-dir ...
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import argparse
 import sys
 from pathlib import Path
 
-# .../src/spacerModel/models/this_file.py → add .../src so `spacerModel` imports work without PYTHONPATH.
+# .../src/spacerModel/training/this_file.py → add .../src so `spacerModel` imports work without PYTHONPATH.
 _SRC = Path(__file__).resolve().parents[2]
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
