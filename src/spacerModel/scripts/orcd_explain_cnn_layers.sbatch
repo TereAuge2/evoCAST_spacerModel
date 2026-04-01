@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=evoCAST_explain_cnn
 #SBATCH --partition=mit_normal
-#SBATCH --time=00:05:00
+#SBATCH --time=00:25:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 #SBATCH --output=logs/slurm-%x-%j.out

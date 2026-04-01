@@ -148,6 +148,56 @@ def plot_sequence_logo(freq_df: pd.DataFrame, outpath: Path, *, style: PlotStyle
     savefig(outpath, dpi=style.dpi)
 
 
+def _relative_bits_matrix(freq_df: pd.DataFrame, background_df: pd.DataFrame, *, eps: float = 1e-9) -> pd.DataFrame:
+    """
+    Per-position bits logo normalized to an empirical background.
+
+    For each position i and base b:
+      weight(i,b) = p(i,b) * log2( p(i,b) / q(i,b) )
+
+    where p is the selected-set probability matrix and q is the background/library probability matrix.
+    This is the per-symbol contribution to KL divergence (in bits). Values can be negative when a base is
+    depleted relative to background.
+    """
+    p = freq_df.copy()
+    q = background_df.copy()
+    # Align positions/bases
+    q = q.reindex(index=p.index, columns=p.columns)
+    p = p.astype(float)
+    q = q.astype(float)
+    p = np.clip(p, eps, 1.0)
+    q = np.clip(q, eps, 1.0)
+    w = p * (np.log2(p) - np.log2(q))
+    w.index = freq_df.index
+    w.columns = freq_df.columns
+    return w
+
+
+def plot_sequence_logo_vs_background(
+    freq_df: pd.DataFrame,
+    background_df: pd.DataFrame,
+    outpath: Path,
+    *,
+    style: PlotStyle,
+    title: str,
+) -> None:
+    """
+    Bits logo normalized to the empirical background (full library).
+    Y-axis is "Bits vs background" (KL contribution per symbol).
+    """
+    set_plot_style(style)
+    bits_df = _relative_bits_matrix(freq_df, background_df)
+    plt.figure(figsize=(style.rect_width_cm / 2.54, style.rect_height_cm / 2.54))
+    ax = plt.gca()
+    logo = logomaker.Logo(bits_df, ax=ax, color_scheme="classic")
+    _ = logo
+    ax.axhline(0.0, color="black", linewidth=0.8, alpha=0.6)
+    ax.set_title(title.replace(" (", "\n("))
+    ax.set_xlabel("Position")
+    ax.set_ylabel("Bits vs background")
+    savefig(outpath, dpi=style.dpi)
+
+
 def pca_2d(
     X: sparse.csr_matrix,
     *,
@@ -900,6 +950,14 @@ def main(argv: list[str] | None = None) -> int:
                         logos_dir / f"logo_top{n_top}_by_FE.png",
                         style=style,
                         title=f"Sequence logo — top {n_top} by FE (n={len(part)})",
+                    )
+                    # Background-normalized bits logo: enrichment/depletion relative to full library composition.
+                    plot_sequence_logo_vs_background(
+                        freq_top,
+                        freq_all,
+                        logos_dir / f"logo_top{n_top}_by_FE_vs_library.png",
+                        style=style,
+                        title=f"Bits vs library — top {n_top} by FE (n={len(part)})",
                     )
                 log("Saved top-N activity sequence logos (top 50/100/200/500/1000 by FE)")
 

@@ -16,7 +16,7 @@
 #   python -m spacerModel.training.torch_hyperopt --help
 
 # Requesting a single core for an interactive job for 1 hour
-salloc -t 00:10:00 -p mit_normal
+salloc -t 00:20:00 -p mit_normal
 
 srun --pty -t 01:00:00 --mem=4G -c 2 bash
 
@@ -62,9 +62,6 @@ python src/spacerModel/data/analyze_dataset.py --splits-excel output/data_proces
 
 # Hyperparameter tuning — CNN smoke test (N_ITER=5) + wandb
 #   export WANDB_API_KEY=...   # once
-# CPU (mit_normal): use if GPU queue is stuck
-sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_cpu_test.sbatch
-# GPU (mit_normal_gpu): sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_gpu_test.sbatch
 
 # Full torch hyperopt on CPU (W&B on by default; USE_WANDB=0 to skip):
 sbatch src/spacerModel/scripts/orcd_train_torch_hyperopt_cnn_cpu.sbatch
@@ -76,6 +73,11 @@ sbatch src/spacerModel/scripts/orcd_tune_svr_kernel.sbatch
 #XGboost
 sbatch src/spacerModel/scripts/orcd_tune_xgboost.sbatch
 
-#plot hyperparameter
+#old - plot hyperparameter
 python src/spacerModel/training/plot_hyperopt_predictions.py \
   --run-dir output/modeling/CNN_hyperparameter_tune/11074812_20260327_162051
+
+
+#explainaiblity on CNN best model
+N_PER_GROUP=100 sbatch src/spacerModel/scripts/orcd_explain_cnn_layers.sbatch \
+  --checkpoint "output/modeling/4_optimized_retrain/11246775_20260331_114442_OPTIMIZED_RETRAIN/final_models/CNN_best_model.pt"

@@ -3,12 +3,19 @@ CNN explainability utilities: per-layer activations + input attributions on one-
 
 Designed for the saved torch checkpoint format produced by `training/train_torch.py`
 and the consolidated retrain outputs (e.g. `final_models/CNN_best_model.pt`).
+
+Derivatives (saliency, grad×input): the forward pass maps one-hot x → ŷ. Backpropagation
+computes ∂ŷ/∂x — how a tiny change to each input entry would change the prediction.
+That is not the same as sequence frequency; it depends on the learned weights and
+nonlinearities. Sequence positions in plots are 1-indexed (1…L). The adaptive max-pool
+axis is 1-indexed over T bins (checkpoint ``pool_out``), not over bp length.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,6 +28,7 @@ import torch
 
 from spacerModel.simple_modeling.train_models import build_feature_matrix, load_dataset
 from spacerModel.models import to_channel_first
+from spacerModel.data.analyze_dataset import dna_position_frequency_matrix
 from spacerModel.training.train_torch import (
     _restore_standard_scaler_1d,
     load_torch_best_checkpoint,
@@ -43,7 +51,10 @@ def _onehot_to_df(x4l: np.ndarray) -> pd.DataFrame:
     x = np.asarray(x4l, dtype=float)
     if x.shape[0] != 4:
         raise ValueError(f"Expected (4, L) one-hot; got {x.shape}")
-    return pd.DataFrame(x.T, columns=_BASES)
+    df = pd.DataFrame(x.T, columns=_BASES)
+    df.index = np.arange(1, df.shape[0] + 1)
+    df.index.name = "position"
+    return df
 
 
 def _attr_to_df(attr4l: np.ndarray) -> pd.DataFrame:
@@ -51,17 +62,44 @@ def _attr_to_df(attr4l: np.ndarray) -> pd.DataFrame:
     a = np.asarray(attr4l, dtype=float)
     if a.shape[0] != 4:
         raise ValueError(f"Expected (4, L) attributions; got {a.shape}")
-    return pd.DataFrame(a.T, columns=_BASES)
+    df = pd.DataFrame(a.T, columns=_BASES)
+    df.index = np.arange(1, df.shape[0] + 1)
+    df.index.name = "position"
+    return df
 
 
-def _plot_activation_heatmap(act: np.ndarray, outpath: Path, *, title: str) -> None:
+def _xtick_positions_1based(n: int, *, max_labels: int = 40) -> list[int]:
+    """Sparse tick labels 1..n (always 1-based)."""
+    if n <= max_labels:
+        return list(range(1, n + 1))
+    step = max(1, int(np.ceil(n / max_labels)))
+    labs = list(range(1, n + 1, step))
+    if labs[-1] != n:
+        labs.append(n)
+    return labs
+
+
+def _heatmap_force_x_1based(ax: Any, n_cols: int, *, max_labels: int = 40) -> None:
+    """
+    After sns.heatmap, matplotlib often still shows 0..n-1. Force tick labels to 1..n_cols
+    at cell centers (0.5, 1.5, ...).
+    """
+    show = set(_xtick_positions_1based(n_cols, max_labels=max_labels))
+    tick_labs = [str(i) if i in show else "" for i in range(1, n_cols + 1)]
+    ax.set_xticks(np.arange(n_cols) + 0.5)
+    ax.set_xticklabels(tick_labs, rotation=0, ha="center")
+
+
+def _plot_activation_heatmap(act: np.ndarray, outpath: Path, *, title: str, xlabel: str = "position (1-based)") -> None:
     """
     act: (C, L) activation map.
     """
     a = np.asarray(act, dtype=float)
     fig, ax = plt.subplots(figsize=(18 / 2.54, 10 / 2.54))
-    sns.heatmap(a, cmap="viridis", ax=ax, cbar=True)
-    ax.set_xlabel("position")
+    n_x = int(a.shape[1])
+    sns.heatmap(a, cmap="viridis", ax=ax, cbar=True, xticklabels=False)
+    _heatmap_force_x_1based(ax, n_x)
+    ax.set_xlabel(xlabel)
     ax.set_ylabel("channel")
     ax.set_title(title)
     fig.tight_layout()
@@ -77,12 +115,15 @@ def _plot_activation_heatmap_labeled(
     title: str,
     yticklabels: list[str] | None = None,
     ylabel: str = "channel",
+    xlabel: str = "position (1-based)",
 ) -> None:
-    """Heatmap with optional y tick labels (e.g. A/C/G/T)."""
+    """Heatmap with optional y tick labels (e.g. A/C/G/T). x-axis is always 1-based tick labels."""
     a = np.asarray(act, dtype=float)
     fig, ax = plt.subplots(figsize=(18 / 2.54, 10 / 2.54))
-    sns.heatmap(a, cmap="viridis", ax=ax, cbar=True)
-    ax.set_xlabel("position")
+    n_x = int(a.shape[1])
+    sns.heatmap(a, cmap="viridis", ax=ax, cbar=True, xticklabels=False)
+    _heatmap_force_x_1based(ax, n_x)
+    ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if yticklabels is not None and len(yticklabels) == a.shape[0]:
         ax.set_yticks(np.arange(a.shape[0]) + 0.5)
@@ -130,18 +171,20 @@ def _plot_saliency_vs_top_filters(
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(18 / 2.54, 14 / 2.54), sharex=True)
     ax0, ax1, ax2 = axes
 
-    ax0.plot(np.arange(L), sal_pos, color="black", linewidth=1.6)
+    xs = np.arange(1, L + 1)
+    ax0.plot(xs, sal_pos, color="black", linewidth=1.6)
     ax0.set_ylabel("saliency\n(sum A/C/G/T)")
     ax0.set_title(title)
     sns.despine(ax=ax0)
 
     def _strip_and_line(ax: Any, arg: np.ndarray, mx: np.ndarray, *, label: str) -> None:
         strip = arg.reshape(1, -1)
-        ax.imshow(strip, aspect="auto", interpolation="nearest", cmap="tab20")
+        ax.imshow(strip, aspect="auto", interpolation="nearest", cmap="tab20", extent=[0.5, L + 0.5, 0, 1], origin="upper")
+        ax.set_xlim(0.5, L + 0.5)
         ax.set_yticks([])
         ax.set_ylabel(label)
         axr = ax.twinx()
-        axr.plot(np.arange(L), mx, color="white", linewidth=1.2, alpha=0.9)
+        axr.plot(xs, mx, color="white", linewidth=1.2, alpha=0.9)
         axr.set_ylabel("max act.", color="white")
         axr.tick_params(axis="y", colors="white")
         sns.despine(ax=ax, left=True, bottom=True)
@@ -149,17 +192,25 @@ def _plot_saliency_vs_top_filters(
 
     _strip_and_line(ax1, c1_arg, c1_max, label="conv1\n(top filter)")
     _strip_and_line(ax2, c2_arg, c2_max, label="conv2\n(top filter)")
-    ax2.set_xlabel("position")
+    ax2.set_xlabel("position (1-based)")
+    for ax in (ax0, ax1, ax2):
+        ax.set_xlim(0.5, L + 0.5)
+    xt_show = _xtick_positions_1based(L)
+    for ax in (ax0, ax1, ax2):
+        ax.set_xticks(xt_show)
+        ax.set_xticklabels([str(i) for i in xt_show])
 
     fig.tight_layout()
     outpath.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(outpath, dpi=250, bbox_inches="tight")
     plt.close(fig)
 
+
 def _plot_position_curve(y: np.ndarray, outpath: Path, *, title: str, ylabel: str) -> None:
     fig, ax = plt.subplots(figsize=(18 / 2.54, 6 / 2.54))
-    ax.plot(np.arange(len(y)), y, color="black", linewidth=1.5)
-    ax.set_xlabel("position")
+    xs = np.arange(1, len(y) + 1)
+    ax.plot(xs, y, color="black", linewidth=1.5)
+    ax.set_xlabel("position (1-based)")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     sns.despine(ax=ax)
@@ -177,10 +228,199 @@ def _plot_logo(df: pd.DataFrame, outpath: Path, *, title: str) -> None:
     ax.set_title(title)
     ax.set_xlabel("position")
     ax.set_ylabel("weight")
+    npos = int(len(df))
+    if npos > 0:
+        # logomaker centers each stack at x = 0, 1, …, L-1; ticks at those integers so labels sit under letters
+        ax.set_xticks(np.arange(npos, dtype=float))
+        ax.set_xticklabels([str(i + 1) for i in range(npos)])
+        ax.set_xlim(-0.5, npos - 0.5)
     sns.despine(ax=ax)
     fig.tight_layout()
     outpath.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(outpath, dpi=250, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _relative_bits_matrix(p: pd.DataFrame, q: pd.DataFrame, eps: float = 1e-9) -> pd.DataFrame:
+    """KL contribution p·log2(p/q) per cell; p,q are position × A/C/G/T."""
+    p2 = p.copy().astype(float)
+    q2 = q.reindex(index=p2.index, columns=p2.columns).astype(float)
+    p2 = np.clip(p2, eps, 1.0)
+    q2 = np.clip(q2, eps, 1.0)
+    w = p2 * (np.log2(p2) - np.log2(q2))
+    w.index.name = "position"
+    return w
+
+
+def _plot_enrichment_vs_saliency_heatmaps(
+    enr: pd.DataFrame,
+    sal_df: pd.DataFrame,
+    outpath: Path,
+    *,
+    title_prefix: str,
+) -> None:
+    """Two-panel figure: enrichment matrix vs library (bits) next to mean saliency (|∂y/∂x|)."""
+    pos_idx = sorted(set(enr.index.astype(int)) & set(sal_df.index.astype(int)))
+    if not pos_idx:
+        return
+    enr = enr.reindex(pos_idx)[_BASES]
+    sal_df = sal_df.reindex(pos_idx)[_BASES]
+    a_e = enr.to_numpy(dtype=float).T  # (4, L)
+    a_s = sal_df.to_numpy(dtype=float).T
+    n_x = int(a_e.shape[1])
+    fig, axes = plt.subplots(1, 2, figsize=(22 / 2.54, 9 / 2.54), sharey=True)
+    ax0, ax1 = axes
+    vmax_e = float(np.nanmax(np.abs(a_e))) if np.any(np.isfinite(a_e)) else 1.0
+    vmax_e = max(vmax_e, 1e-9)
+    vmax_s = float(np.nanmax(np.abs(a_s))) if np.any(np.isfinite(a_s)) else 1.0
+    vmax_s = max(vmax_s, 1e-9)
+    sns.heatmap(
+        a_e,
+        cmap="RdBu_r",
+        center=0.0,
+        vmin=-vmax_e,
+        vmax=vmax_e,
+        ax=ax0,
+        cbar=True,
+        xticklabels=False,
+        yticklabels=_BASES,
+    )
+    _heatmap_force_x_1based(ax0, n_x)
+    ax0.set_ylabel("base")
+    ax0.set_title(f"{title_prefix}: enrichment vs library (p·log2(p/q))")
+    sns.heatmap(a_s, cmap="viridis", vmin=0.0, vmax=vmax_s, ax=ax1, cbar=True, xticklabels=False, yticklabels=_BASES)
+    _heatmap_force_x_1based(ax1, n_x)
+    ax1.set_ylabel("base")
+    ax1.set_title(f"{title_prefix}: mean |∂y/∂x| (saliency)")
+    for ax in (ax0, ax1):
+        ax.set_xlabel("position (1-based)")
+    fig.suptitle("Enrichment matrix vs model saliency (same positions)", y=1.02, fontsize=11)
+    fig.tight_layout()
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(outpath, dpi=250, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _plot_frequency_vs_model_for_group(
+    grp: str,
+    grp_seqs: pd.Series,
+    lib_seqs: pd.Series,
+    sal_mean: np.ndarray,
+    gxi_mean: np.ndarray,
+    gdir: Path,
+) -> None:
+    """
+    Compare group frequency vs library to mean |∂y/∂x| and mean grad×input (same mask as explainability).
+    Writes scatter + per-position r plots alongside group summary CSVs.
+    """
+    sal_mean = np.asarray(sal_mean, dtype=float)
+    gxi_mean = np.asarray(gxi_mean, dtype=float)
+    if sal_mean.ndim != 2 or sal_mean.shape[0] != 4:
+        return
+    Ls = int(sal_mean.shape[1])
+    has_gxi = gxi_mean.shape == sal_mean.shape and gxi_mean.size > 0
+
+    freq_lib, L_lib = dna_position_frequency_matrix(lib_seqs)
+    freq_grp, Lg = dna_position_frequency_matrix(grp_seqs)
+    L = min(int(L_lib), int(Lg), Ls)
+    if L < 1:
+        return
+
+    pos = list(range(1, L + 1))
+    freq_lib = freq_lib.reindex(pos).fillna(0.0)
+    freq_grp = freq_grp.reindex(pos).fillna(0.0)
+    for c in _BASES:
+        if c not in freq_lib.columns:
+            freq_lib[c] = 0.0
+        if c not in freq_grp.columns:
+            freq_grp[c] = 0.0
+    freq_lib = freq_lib[_BASES].astype(float)
+    freq_grp = freq_grp[_BASES].astype(float)
+
+    sal_df = pd.DataFrame(sal_mean[:, :L].T, index=pos, columns=_BASES)
+    gxi_df = pd.DataFrame(gxi_mean[:, :L].T, index=pos, columns=_BASES) if has_gxi else None
+    enr = _relative_bits_matrix(freq_grp, freq_lib)
+
+    freq_grp.to_csv(gdir / "freq_group_mean.csv")
+    freq_lib.to_csv(gdir / "freq_library_same_mask.csv")
+    enr.to_csv(gdir / "enrichment_bits_vs_library.csv")
+
+    # Flatten (position, base) for scatter plots
+    fv = freq_grp.to_numpy().reshape(-1)
+    sv = sal_df.to_numpy().reshape(-1)
+    ev = enr.to_numpy().reshape(-1)
+    ok = np.isfinite(fv) & np.isfinite(sv)
+    fig, ax = plt.subplots(figsize=(16 / 2.54, 12 / 2.54))
+    ax.scatter(fv[ok], sv[ok], s=18, alpha=0.55, color="black")
+    ax.set_xlabel("group frequency p(base|pos)")
+    ax.set_ylabel("mean |∂y/∂x| (saliency)")
+    if ok.sum() >= 2:
+        r = float(np.corrcoef(fv[ok], sv[ok])[0, 1])
+        ax.set_title(f"{grp}: frequency vs saliency (all cells)\nPearson r = {r:.3f}")
+    else:
+        ax.set_title(f"{grp}: frequency vs saliency")
+    sns.despine(ax=ax)
+    fig.tight_layout()
+    fig.savefig(gdir / "scatter_freq_vs_saliency.png", dpi=250, bbox_inches="tight")
+    plt.close(fig)
+
+    _plot_enrichment_vs_saliency_heatmaps(enr, sal_df, gdir / "enrichment_vs_saliency_heatmaps.png", title_prefix=grp)
+
+    if has_gxi and gxi_df is not None:
+        gv = gxi_df.to_numpy().reshape(-1)
+        ok2 = np.isfinite(ev) & np.isfinite(gv)
+        fig, ax = plt.subplots(figsize=(16 / 2.54, 12 / 2.54))
+        ax.scatter(ev[ok2], gv[ok2], s=18, alpha=0.55, color="black")
+        ax.axhline(0.0, color="grey", linewidth=0.8)
+        ax.axvline(0.0, color="grey", linewidth=0.8)
+        ax.set_xlabel("enrichment bits vs library (p·log2(p/q))")
+        ax.set_ylabel("mean grad×input")
+        if ok2.sum() >= 2:
+            r2 = float(np.corrcoef(ev[ok2], gv[ok2])[0, 1])
+            ax.set_title(f"{grp}: enrichment vs grad×input\nPearson r (all cells) = {r2:.3f}")
+        else:
+            ax.set_title(f"{grp}: enrichment vs grad×input")
+        sns.despine(ax=ax)
+        fig.tight_layout()
+        fig.savefig(gdir / "scatter_enrichment_vs_gradxinput.png", dpi=250, bbox_inches="tight")
+        plt.close(fig)
+
+    rows_r: list[dict[str, Any]] = []
+    for p in pos:
+        xf = freq_grp.loc[p, _BASES].to_numpy(dtype=float)
+        ys = sal_df.loc[p, _BASES].to_numpy(dtype=float)
+        if np.allclose(np.std(xf), 0.0) or np.allclose(np.std(ys), 0.0):
+            rr = float("nan")
+        else:
+            rr = float(np.corrcoef(xf, ys)[0, 1])
+        rr2 = float("nan")
+        if has_gxi and gxi_df is not None:
+            xe = enr.loc[p, _BASES].to_numpy(dtype=float)
+            yg = gxi_df.loc[p, _BASES].to_numpy(dtype=float)
+            if not (np.allclose(np.std(xe), 0.0) or np.allclose(np.std(yg), 0.0)):
+                rr2 = float(np.corrcoef(xe, yg)[0, 1])
+        rows_r.append({"position": int(p), "pearson_r_freq_vs_saliency": rr, "pearson_r_enrichment_vs_gradxinput": rr2})
+    pd.DataFrame(rows_r).to_csv(gdir / "per_position_freq_model_agreement.csv", index=False)
+
+    fig, ax = plt.subplots(figsize=(18 / 2.54, 6 / 2.54))
+    ax.plot([r["position"] for r in rows_r], [r["pearson_r_freq_vs_saliency"] for r in rows_r], color="black", linewidth=1.5, label="freq vs saliency")
+    if has_gxi:
+        ax.plot(
+            [r["position"] for r in rows_r],
+            [r["pearson_r_enrichment_vs_gradxinput"] for r in rows_r],
+            color="tab:blue",
+            linewidth=1.2,
+            alpha=0.85,
+            label="enrichment vs grad×input",
+        )
+    ax.axhline(0.0, color="grey", linewidth=0.8)
+    ax.set_xlabel("position (1-based)")
+    ax.set_ylabel("Pearson r across A/C/G/T")
+    ax.set_title(f"{grp}: per-position agreement")
+    ax.legend(frameon=False, loc="best")
+    sns.despine(ax=ax)
+    fig.tight_layout()
+    fig.savefig(gdir / "per_position_freq_model_agreement.png", dpi=250, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -378,6 +618,12 @@ def main(argv: list[str] | None = None) -> int:
     take = np.array(chosen[: min(len(chosen), n_per * len(groups))], dtype=int)
     log(f"Explaining n={len(take)} examples total")
 
+    group_indices: dict[str, list[int]] = defaultdict(list)
+    for g, ii in group_assign:
+        group_indices[str(g)].append(int(ii))
+
+    lib_seqs_for_freq = df_sub["SpacerSeq"].fillna("").astype(str)
+
     out_dir = Path(args.out_dir)
     run_dir = out_dir / Path(args.checkpoint).stem
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -452,12 +698,14 @@ def main(argv: list[str] | None = None) -> int:
             yticklabels=[f"f{i}" for i in range(int(c2a.shape[0]))],
             ylabel="filter",
         )
+        n_t = int(pa.shape[1])
         _plot_activation_heatmap_labeled(
             pa,
             ex_dir / "pool_activation.png",
-            title="adaptive maxpool activation (filters × pooled_bin)",
+            title=f"adaptive maxpool ({n_t} bins; not sequence length)",
             yticklabels=[f"f{i}" for i in range(int(pa.shape[0]))],
             ylabel="filter",
+            xlabel="pooled bin (1-based)",
         )
 
         _plot_saliency_vs_top_filters(
@@ -533,8 +781,21 @@ def main(argv: list[str] | None = None) -> int:
             pd.DataFrame(conv2_mean).to_csv(gdir / "conv2_activation_mean.csv", index=False)
             _plot_activation_heatmap(conv2_mean, gdir / "conv2_activation_mean.png", title=f"{grp}: mean conv2 activation")
         if pool_mean.size:
+            n_t = int(pool_mean.shape[1])
             pd.DataFrame(pool_mean).to_csv(gdir / "pool_activation_mean.csv", index=False)
-            _plot_activation_heatmap(pool_mean, gdir / "pool_activation_mean.png", title=f"{grp}: mean pool activation")
+            _plot_activation_heatmap(
+                pool_mean,
+                gdir / "pool_activation_mean.png",
+                title=f"{grp}: mean pool activation ({n_t} bins; adaptive max-pool, not bp length)",
+                xlabel="pooled bin (1-based)",
+            )
+
+        # Frequency vs model (same df mask as explainability; group = explained examples in this group)
+        rows_g = group_indices.get(grp, [])
+        if sal_mean.size and rows_g:
+            log(f"  {grp}: enrichment vs saliency heatmaps + scatter comparisons…")
+            grp_seqs = df_sub.loc[rows_g, "SpacerSeq"].fillna("").astype(str)
+            _plot_frequency_vs_model_for_group(grp, grp_seqs, lib_seqs_for_freq, sal_mean, gxi_mean, gdir)
 
     log(f"Done. Outputs in {run_dir}")
     return 0
