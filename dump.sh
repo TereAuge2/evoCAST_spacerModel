@@ -16,10 +16,26 @@
 #   python -m spacerModel.training.torch_hyperopt --help
 
 # Requesting a single core for an interactive job for 1 hour
-salloc -t 01:00:00 -p mit_normal
+salloc -t 00:30:00 -p mit_normal
 
 module load miniforge
 mamba activate evoCAST
+
+
+# Data analysis:
+
+python src/spacerModel/data/analyze_dataset.py 
+
+python src/spacerModel/data/analyze_dataset.py --splits-excel output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx
+
+
+## Linear position weights
+python src/spacerModel/interpretation/linear_position_weights.py \
+  --excel output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx \
+  --split-col Split \
+  --embeddings onehot,kmer_gc_onehot \
+  --kmer-k 2 \
+  --output-dir output/interpretation/linear_position_weights
 
 
 #### Train models
@@ -36,24 +52,12 @@ python src/spacerModel/simple_modeling/train_models.py --split-col Split
 
 python src/spacerModel/simple_modeling/train_models.py --split-col SplitRandom
 
+PYTHONPATH=src python src/spacerModel/simple_modeling/combine_cv_summaries.py
 
-#Plotting
+#Plotting (old scripts)
 python src/spacerModel/simple_modeling/replot_cv_summaries.py \
   --input-base output/modeling \
   --run-dirs "90%_variance_SVD" "100%_variance_SVD" raw_onehot
-
-# Data analysis:
-python src/spacerModel/interpretation/linear_position_weights.py \
-  --excel output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx \
-  --split-col Split \
-  --embeddings onehot,kmer_gc_onehot \
-  --kmer-k 2 \
-  --output-dir output/interpretation/linear_position_weights
-
-
-python src/spacerModel/data/analyze_dataset.py 
-
-python src/spacerModel/data/analyze_dataset.py --splits-excel output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx
 
 
 
@@ -87,41 +91,7 @@ PYTHONPATH=src python -m spacerModel.inference.genomic_spacer_predict_cnn \
   --output output/inference/ranked_spacers.xlsx 
 
 
-# primers — spacerModel.inference.primer
-#   If ranked table coords are from edge-trimmed scan but FASTA is full-length, add: --spacer-coordinate-offset 400
-#
-# One gene only: pass --gene NAME (matches full Gene column or the prefix before the first '_', e.g. RHO for RHO_hg19_...).
-# All genes: omit --gene; every row in --input / --input-dir is processed (FASTA must list every Gene you need).
-#
-# Single-gene example:
-PYTHONPATH=src python -m spacerModel.inference.primer \
-  --input output/inference/ranked_sequences_RHO_hg19_knownGene_ENST00000296271.4_4.xlsx \
-  --gene RHO \
-  --fasta data/input_fasta_edge.fa \
-  --output output/inference/ranked_with_primers_RHO.xlsx
-
-# All genes from one combined ranked file (no --gene):
-# PYTHONPATH=src python -m spacerModel.inference.primer \
-#   --input output/inference/ranked_sequences.xlsx \
-#   --fasta data/input_fasta.fa \
-#   --output output/inference/ranked_with_primers_all.xlsx
-
-# Or all ranked_sequences*.xlsx in a directory:
-# PYTHONPATH=src python -m spacerModel.inference.primer \
-#   --input-dir output/inference \
-#   --fasta data/input_fasta.fa \
-#   --output output/inference/ranked_with_primers_all.xlsx
-
-
-# All genes: writes combined primers_all.xlsx plus one file per distinct Gene under
-#   output/inference/primers_all_by_gene/  (requires a Gene column; logs skip if missing)
-# Use --no-split-by-gene for the combined file only.
-PYTHONPATH=src python -m spacerModel.inference.primer \
-  --input output/inference/ranked_sequences.xlsx \
-  --ncbi-num-primer-pairs 200 \
-  --fasta data/input_fasta_edge.fa \
-  --output output/inference/primers_all2.xlsx \
-  --verbose
+## getting primers for all genes
 
 
 ## searching per spacer per gene --> only top 3 spacers per gene 
@@ -135,16 +105,8 @@ PYTHONPATH=src python -m spacerModel.inference.primer \
   --per-spacer-template \
   --verbose
 
-
-
-
 ## randomly pick and pick top 3 from model and combine with Simon (only takes the top 3 of model with primers)
-PYTHONPATH=src python -m spacerModel.inference.picking \
-  --primers output/inference/primers_all.xlsx \
-  --simon data/Simon_expert_spacers.xlsx \
-  --output-full output/inference/primers_all_chosen.xlsx \
-  --output-only output/inference/primers_all_chosen_only.xlsx
-
+# this times out on interactive session
 PYTHONPATH=src python -m spacerModel.inference.picking \
   --input output/inference/ranked_sequences.xlsx \
   --fasta data/input_fasta_edge.fa \
@@ -157,5 +119,8 @@ PYTHONPATH=src python -m spacerModel.inference.picking \
   --output-ranked output/inference/Model_ranked_spacers_all_genes.csv
 
 # Long runs: submit from repo root, e.g.
-#   sbatch src/spacerModel/scripts/orcd_picking_all_genes.sbatch
+  sbatch src/spacerModel/scripts/orcd_picking_all_genes.sbatch
 # Override paths: sbatch --export=ALL,PICK_INPUT=...,PICK_FASTA=...,PICK_BOTTOM=0,...
+
+
+#combine with simon's expert spacers 
