@@ -32,7 +32,7 @@ Use SSH instead if you prefer: `git clone git@github.com:TereAuge2/evoCAST_space
 
 ## Making predictions (CNN, genomic FASTA)
 
-This flow scores **candidate protospacers** in a genomic sequence using a saved **CNN** checkpoint produced by the training pipeline (`save_torch_best_checkpoint` / `final_models/CNN_best_model.pt`).
+This flow scores **candidate protospacers** in a genomic sequence using a saved **CNN** checkpoint (`save_torch_best_checkpoint`). The repository includes a released weights file at **`models/CNN_best_model.pt`** (~2.2 MB; optimized retrain from the training pipeline) so you can run inference without rebuilding `output/modeling/.../final_models/`.
 
 ### End-to-end workflow (inference → ranked spacers → picking → primers)
 
@@ -55,7 +55,7 @@ Run steps **in order** from the repo root with `PYTHONPATH=src` (or your usual `
 
 **What you need**
 
-- A checkpoint file (`.pt`) with `model_kind == "cnn"`, trained on **flat one-hot** DNA (`--embedding onehot`), consistent with how the model was saved.
+- A checkpoint file (`.pt`) with `model_kind == "cnn"`, trained on **flat one-hot** DNA (`--embedding onehot`), consistent with how the model was saved. Use **`models/CNN_best_model.pt`** from the clone or your own `final_models/CNN_best_model.pt` from a training run.
 - A **FASTA** file (e.g. `.fa`). Each ``>`` header line is stored **verbatim** (text after ``>``, stripped) in the output **Gene** column. For **picking** (`--gene`) and **per-gene density plots**, the matchable “symbol” is the substring **before the first underscore** when the header contains `_` (e.g. ``>MYO7A_chr7_...`` → ``MYO7A``). If there is **no** underscore, the whole header is used. Underscores are **not** required; they only help separate a short gene tag from extra text in the header. Plain text **without** any ``>`` line is treated as a single sequence with ``Gene`` set to ``(no_header)``.
 
 **Convention**
@@ -70,7 +70,7 @@ From the repository root (with `PYTHONPATH=src`):
 
 ```bash
 python -m spacerModel.inference.genomic_spacer_predict_cnn \
-  --checkpoint path/to/CNN_best_model.pt \
+  --checkpoint models/CNN_best_model.pt \
   --fasta path/to/genome.fa \
   --output output/inference/ranked_sequences.xlsx
 ```

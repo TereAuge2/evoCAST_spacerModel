@@ -499,7 +499,7 @@ def _saliency_and_activations(
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--checkpoint", default="output/modeling/optimized_retrain/latest/final_models/CNN_best_model.pt")
+    ap.add_argument("--checkpoint", default="models/CNN_best_model.pt")
     ap.add_argument("--excel", default="output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx")
     ap.add_argument("--sheet", default=0, help="Sheet name or index (0-based)")
     ap.add_argument("--split-col", choices=["Split", "SplitRandom"], default="Split")

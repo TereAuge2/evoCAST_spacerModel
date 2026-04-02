@@ -81,12 +81,12 @@ python src/spacerModel/training/plot_hyperopt_predictions.py \
 
 #explainaiblity on CNN best model
 N_PER_GROUP=100 sbatch src/spacerModel/scripts/orcd_explain_cnn_layers.sbatch \
-  --checkpoint "output/modeling/4_optimized_retrain/11246775_20260331_114442_OPTIMIZED_RETRAIN/final_models/CNN_best_model.pt"
+  --checkpoint "models/CNN_best_model.pt"
 
 
 #inference on new data
 PYTHONPATH=src python -m spacerModel.inference.genomic_spacer_predict_cnn \
-  --checkpoint "output/modeling/4_optimized_retrain/11246775_20260331_114442_OPTIMIZED_RETRAIN/final_models/CNN_best_model.pt" \
+  --checkpoint "models/CNN_best_model.pt" \
   --fasta data/input_fasta_edge.fa \
   --output output/inference/ranked_spacers.xlsx 
 
