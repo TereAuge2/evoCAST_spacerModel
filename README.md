@@ -37,12 +37,13 @@ This flow scores **candidate protospacers** in a genomic sequence using a saved 
 **What you need**
 
 - A checkpoint file (`.pt`) with `model_kind == "cnn"`, trained on **flat one-hot** DNA (`--embedding onehot`), consistent with how the model was saved.
-- A **FASTA** or plain-text file containing the genomic sequence (uppercase A/C/G/T).
+- A **FASTA** or plain-text file. For FASTA, each ``>`` header line defines the **gene** label for that sequence (full header text after ``>`` is stored in a **Gene** column). Multiple records are concatenated in the output table. Plain text **without** any ``>`` line is treated as a single sequence with ``Gene`` set to ``(no_header)``.
 
 **Convention**
 
 - Spacer length is **32 bp** by default; it must match the checkpoint (`n_features = 4 × length`).
 - Sites are scanned on **both strands** for a **YN** PAM (first base Y ∈ {C, T}) immediately 5′ of the spacer: `[PAM(2)][SPACER(32)]` on the targeting strand. Output coordinates are **1-based** on the forward reference.
+- Optional **edge exclusion** for the scan (default 400 bp per end); use ``--no-omit-edge-bases`` for a full-length scan. See ``--help``.
 
 **CLI**
 
@@ -52,14 +53,21 @@ From the repository root (with `PYTHONPATH=src`):
 python -m spacerModel.inference.genomic_spacer_predict_cnn \
   --checkpoint path/to/CNN_best_model.pt \
   --fasta path/to/genome.fa \
-  --output path/to/ranked_sites.xlsx \
-  --device auto
+  --output path/to/ranked_sites.xlsx
 ```
 
-Use `--output` with a `.csv` suffix for CSV. Optional: `--batch-size 512`, `--device cpu|cuda|auto`, `--spacer-len` (only if it must match a non-32 checkpoint; usually omit and let it infer from the checkpoint).
+Inference runs on CPU. See ``--help`` on that module for options (e.g. edge reserve for padded FASTA, plots).
 
-The output table includes strand, PAM, spacer coordinates, `SpacerSeq`, and **`Predicted_FE`** (model output on the original FE scale after inverse target scaling), sorted from high to low.
+## Primer-BLAST (optional)
 
+``src/spacerModel/inference/primer.py`` calls [NCBI Primer-BLAST](https://www.ncbi.nlm.nih.gov/tools/primer-blast/) to annotate ranked spacer tables; use ``--help`` for inputs and flags.
+
+```bash
+PYTHONPATH=src python -m spacerModel.inference.primer \
+  --input path/to/ranked_sequences_*.xlsx \
+  --fasta path/to/same_genome.fa \
+  --output path/to/ranked_with_primers.xlsx
+```
 
 ## Other functionality
 

@@ -16,10 +16,7 @@
 #   python -m spacerModel.training.torch_hyperopt --help
 
 # Requesting a single core for an interactive job for 1 hour
-salloc -t 00:20:00 -p mit_normal
-
-srun --pty -t 01:00:00 --mem=4G -c 2 bash
-
+salloc -t 01:00:00 -p mit_normal
 
 module load miniforge
 mamba activate evoCAST
@@ -81,3 +78,84 @@ python src/spacerModel/training/plot_hyperopt_predictions.py \
 #explainaiblity on CNN best model
 N_PER_GROUP=100 sbatch src/spacerModel/scripts/orcd_explain_cnn_layers.sbatch \
   --checkpoint "output/modeling/4_optimized_retrain/11246775_20260331_114442_OPTIMIZED_RETRAIN/final_models/CNN_best_model.pt"
+
+
+#inference on new data
+PYTHONPATH=src python -m spacerModel.inference.genomic_spacer_predict_cnn \
+  --checkpoint "output/modeling/4_optimized_retrain/11246775_20260331_114442_OPTIMIZED_RETRAIN/final_models/CNN_best_model.pt" \
+  --fasta data/input_fasta_edge.fa \
+  --output output/inference/ranked_spacers.xlsx 
+
+
+# primers — spacerModel.inference.primer
+#   If ranked table coords are from edge-trimmed scan but FASTA is full-length, add: --spacer-coordinate-offset 400
+#
+# One gene only: pass --gene NAME (matches full Gene column or the prefix before the first '_', e.g. RHO for RHO_hg19_...).
+# All genes: omit --gene; every row in --input / --input-dir is processed (FASTA must list every Gene you need).
+#
+# Single-gene example:
+PYTHONPATH=src python -m spacerModel.inference.primer \
+  --input output/inference/ranked_sequences_RHO_hg19_knownGene_ENST00000296271.4_4.xlsx \
+  --gene RHO \
+  --fasta data/input_fasta_edge.fa \
+  --output output/inference/ranked_with_primers_RHO.xlsx
+
+# All genes from one combined ranked file (no --gene):
+# PYTHONPATH=src python -m spacerModel.inference.primer \
+#   --input output/inference/ranked_sequences.xlsx \
+#   --fasta data/input_fasta.fa \
+#   --output output/inference/ranked_with_primers_all.xlsx
+
+# Or all ranked_sequences*.xlsx in a directory:
+# PYTHONPATH=src python -m spacerModel.inference.primer \
+#   --input-dir output/inference \
+#   --fasta data/input_fasta.fa \
+#   --output output/inference/ranked_with_primers_all.xlsx
+
+
+# All genes: writes combined primers_all.xlsx plus one file per distinct Gene under
+#   output/inference/primers_all_by_gene/  (requires a Gene column; logs skip if missing)
+# Use --no-split-by-gene for the combined file only.
+PYTHONPATH=src python -m spacerModel.inference.primer \
+  --input output/inference/ranked_sequences.xlsx \
+  --ncbi-num-primer-pairs 200 \
+  --fasta data/input_fasta_edge.fa \
+  --output output/inference/primers_all2.xlsx \
+  --verbose
+
+
+## searching per spacer per gene --> only top 3 spacers per gene 
+PYTHONPATH=src python -m spacerModel.inference.primer \
+  --input output/inference/ranked_sequences_MYO7A_round2__hg19_knownGene_ENST00000962572.1_1_1stIntron.xlsx \
+  --ncbi-num-primer-pairs 50 \
+  --limit 2 \
+  --ncbi-html-dir output/inference/ncbi_html \
+  --fasta data/input_fasta_edge.fa \
+  --output output/inference/primers_top_5_MYO7A_redo3.xlsx \
+  --per-spacer-template \
+  --verbose
+
+
+
+
+## randomly pick and pick top 3 from model and combine with Simon (only takes the top 3 of model with primers)
+PYTHONPATH=src python -m spacerModel.inference.picking \
+  --primers output/inference/primers_all.xlsx \
+  --simon data/Simon_expert_spacers.xlsx \
+  --output-full output/inference/primers_all_chosen.xlsx \
+  --output-only output/inference/primers_all_chosen_only.xlsx
+
+PYTHONPATH=src python -m spacerModel.inference.picking \
+  --input output/inference/ranked_sequences.xlsx \
+  --fasta data/input_fasta_edge.fa \
+  --output output/inference/Model_ranked_spacers_all_genes_picked_for_testing_with_primers.xlsx \
+  --gene all \
+  --number-top-picked 3 \
+  --number-bottom-picked 3 \
+  --number-random-picked 3 \
+  --ncbi-num-primer-pairs 50 \
+  --output-ranked output/inference/Model_ranked_spacers_all_genes.csv
+
+# Long runs: submit from repo root, e.g.
+#   sbatch src/spacerModel/scripts/orcd_picking_all_genes.sbatch
+# Override paths: sbatch --export=ALL,PICK_INPUT=...,PICK_FASTA=...,PICK_BOTTOM=0,...

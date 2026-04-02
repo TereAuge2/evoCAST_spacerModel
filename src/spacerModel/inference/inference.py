@@ -1,5 +1,5 @@
 """
-Genomic YN-PAM spacer scanning + CNN FE prediction.
+Genomic YN-PAM spacer scanning + CNN log2-FE prediction.
 
 Checkpoint I/O and scaling use ``training.train_torch``; one-hot features use
 ``simple_modeling.train_models.build_feature_matrix`` (``embedding="onehot"``). No duplicated helpers.
@@ -7,13 +7,18 @@ Checkpoint I/O and scaling use ``training.train_torch``; one-hot features use
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import torch
 
 from spacerModel.simple_modeling.train_models import build_feature_matrix
+
+# PlotStyle imported lazily in plot_predicted_fe_density to match analyze_dataset (dpi/figsize/fonts).
 from spacerModel.training.train_torch import (
     load_torch_best_checkpoint,
     predict_numpy_from_checkpoint,
@@ -22,9 +27,54 @@ from spacerModel.training.train_torch import (
 
 DEFAULT_GENOMIC_SPACER_LEN = 32
 
+# Bases trimmed from each end of each FASTA record before YN-PAM scanning; keeps flanks for primer
+# design while coordinates in the output table remain 1-based on the full record.
+DEFAULT_SPACER_SEARCH_EDGE_RESERVE = 400
+
+# Output column for CNN predictions (log2-FE); matches plot axis titles.
+PREDICTED_LOG2_FE_COL = "Predicted_log2_FE"
+
+
+def parse_fasta_records(path: Path) -> list[tuple[str, str]]:
+    """
+    Split a FASTA file into ``(gene, sequence)`` pairs.
+
+    ``gene`` is the header text after ``>`` (first line of each record), stripped.
+    If the file has no ``>`` lines, the whole file is treated as one sequence with
+    ``gene`` set to ``"(no_header)"``.
+    """
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    if ">" not in raw:
+        seq_lines = [ln.strip() for ln in raw.splitlines() if ln.strip() and not ln.startswith(">")]
+        seq = "".join(seq_lines).upper()
+        return [("(no_header)", seq)] if seq else []
+
+    records: list[tuple[str, str]] = []
+    header: str | None = None
+    seq_parts: list[str] = []
+
+    for line in raw.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if s.startswith(">"):
+            if header is not None or seq_parts:
+                seq = "".join(seq_parts).upper()
+                records.append((header or "", seq))
+            header = s[1:].strip()
+            seq_parts = []
+        else:
+            seq_parts.append(s.upper())
+
+    if header is not None or seq_parts:
+        seq = "".join(seq_parts).upper()
+        records.append((header or "", seq))
+
+    return records
+
 
 def load_genomic_sequence(path: Path) -> str:
-    """Load sequence from FASTA or plain text (skip '>' lines, concatenate sequence)."""
+    """Load sequence from FASTA or plain text (all records concatenated; prefer ``parse_fasta_records`` for per-gene)."""
     lines = [ln.strip() for ln in path.read_text(encoding="utf-8", errors="replace").splitlines()]
     seq_lines = [ln for ln in lines if ln and not ln.startswith(">")]
     return "".join(seq_lines).upper()
@@ -105,6 +155,188 @@ def extract_spacers_with_yn_pam_both_strands(
     return pd.DataFrame(records)
 
 
+def plot_predicted_fe_density(
+    df: pd.DataFrame,
+    outpath: Path,
+    *,
+    title: str | None = None,
+) -> None:
+    """
+    Kernel density of ``Predicted_log2_FE``. Matches ``data/analyze_dataset.plot_fe_density`` (PlotStyle:
+    300 dpi, 16×12 cm figure, Arial 14pt via ``set_plot_style``). Writes ``.png`` and ``.pdf`` next to
+    the given path (strip ``.png``/``.pdf`` to get base stem, or use a stem without extension).
+    """
+    from spacerModel.data.analyze_dataset import PlotStyle, set_plot_style
+
+    if PREDICTED_LOG2_FE_COL not in df.columns or df[PREDICTED_LOG2_FE_COL].empty:
+        return
+    vals = pd.to_numeric(df[PREDICTED_LOG2_FE_COL], errors="coerce").dropna()
+    if vals.empty:
+        return
+
+    style = PlotStyle()
+    set_plot_style(style)
+    fig, ax = plt.subplots(figsize=(style.rect_width_cm / 2.54, style.rect_height_cm / 2.54))
+    if len(vals) >= 2:
+        try:
+            sns.kdeplot(x=vals, ax=ax, fill=True, color="steelblue", linewidth=1.0)
+        except Exception:
+            sns.histplot(vals, ax=ax, stat="density", kde=True, color="steelblue", edgecolor="white")
+    else:
+        ax.axvline(float(vals.iloc[0]), color="steelblue", linewidth=2.0)
+        ax.set_ylim(bottom=0.0)
+    ax.set_xlabel("Predicted log2-FE")
+    ax.set_ylabel("Density")
+    ax.set_title(title or "Predicted log2-FE density")
+    ax.grid(False)
+    sns.despine(ax=ax)
+    fig.tight_layout()
+    outpath = Path(outpath)
+    if outpath.suffix.lower() in (".png", ".pdf"):
+        base = outpath.with_suffix("")
+    else:
+        base = outpath
+    png_path = base.with_suffix(".png")
+    pdf_path = base.with_suffix(".pdf")
+    png_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(png_path, dpi=style.dpi, bbox_inches="tight")
+    fig.savefig(pdf_path, dpi=style.dpi, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _safe_plot_stem_fragment(name: str, *, max_len: int = 80) -> str:
+    """Filesystem-safe fragment from a gene / header string (for multi-gene plot stems)."""
+    s = re.sub(r"[^\w\-.]+", "_", str(name).strip())
+    s = s.strip("._-") or "gene"
+    return s[:max_len]
+
+
+def _gene_short_prefix(gene: str) -> str:
+    """Substring before the first ``_`` (plot titles and stems); if none, full header stripped."""
+    s = str(gene).strip()
+    if not s:
+        return "(unknown)"
+    if "_" not in s:
+        return s
+    head, _ = s.split("_", 1)
+    head = head.strip()
+    return head if head else s
+
+
+def _plot_stem_base(outpath: Path) -> Path:
+    outpath = Path(outpath)
+    if outpath.suffix.lower() in (".png", ".pdf"):
+        return outpath.with_suffix("")
+    return outpath
+
+
+def plot_predicted_fe_density_by_gene(df: pd.DataFrame, outpath: Path) -> list[Path]:
+    """
+    KDE of ``Predicted_log2_FE`` per ``Gene``: one PNG+PDF pair per distinct gene. Filenames are always
+    ``<base>_<short_prefix>`` (never ``<base>`` alone): the short prefix is the header text before the first
+    ``_`` (then filesystem-safe); collisions become ``_2``, ``_3``, … If there is no ``Gene`` column,
+    writes a single ``<base>`` plot without a gene suffix.
+    Returns the list of ``.png`` paths written (empty if nothing could be plotted).
+    """
+    base = _plot_stem_base(outpath)
+    if "Gene" not in df.columns:
+        vals = pd.to_numeric(
+            df.get(PREDICTED_LOG2_FE_COL, pd.Series(dtype=float)), errors="coerce"
+        ).dropna()
+        if vals.empty:
+            return []
+        plot_predicted_fe_density(df, outpath, title="Predicted log2-FE density")
+        return [base.with_suffix(".png")]
+
+    work = df.copy()
+    work["Gene"] = work["Gene"].fillna("(unknown)")
+    genes = sorted(work["Gene"].unique(), key=str)
+
+    used: set[str] = set()
+    png_paths: list[Path] = []
+
+    def unique_frag(label: str) -> str:
+        frag = _safe_plot_stem_fragment(label)
+        if frag not in used:
+            used.add(frag)
+            return frag
+        i = 2
+        while True:
+            cand = f"{frag}_{i}"
+            if cand not in used:
+                used.add(cand)
+                return cand
+            i += 1
+
+    # One code path for one or many genes: always ``<base>_<short_prefix>.png`` (never write the base alone).
+    for g in genes:
+        sub = work[work["Gene"] == g]
+        vals = pd.to_numeric(sub[PREDICTED_LOG2_FE_COL], errors="coerce").dropna()
+        if vals.empty:
+            continue
+        short = _gene_short_prefix(str(g))
+        frag = unique_frag(short)
+        gene_base = base.parent / f"{base.name}_{frag}"
+        plot_predicted_fe_density(
+            sub,
+            gene_base.with_suffix(".png"),
+            title=f"{short}: Predicted log2-FE density",
+        )
+        png_paths.append(gene_base.with_suffix(".png"))
+
+    return png_paths
+
+
+def write_ranked_sequences_excel_per_gene(df: pd.DataFrame, out_dir: Path) -> list[tuple[Path, int]]:
+    """
+    Write ``ranked_sequences.xlsx`` (all rows) and one ``ranked_sequences_<gene>.xlsx`` per distinct ``Gene``.
+    If ``Gene`` is missing, writes only ``ranked_sequences.xlsx``. Returns ``(path, row_count)`` pairs.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if df.empty:
+        return []
+
+    if "Gene" not in df.columns:
+        path = out_dir / "ranked_sequences.xlsx"
+        df.to_excel(path, index=False, engine="openpyxl")
+        return [(path, len(df))]
+
+    work = df.copy()
+    work["Gene"] = work["Gene"].fillna("(unknown)")
+    genes = sorted(work["Gene"].unique(), key=str)
+    used: set[str] = set()
+
+    def unique_frag(label: str) -> str:
+        frag = _safe_plot_stem_fragment(label)
+        if frag not in used:
+            used.add(frag)
+            return frag
+        i = 2
+        while True:
+            cand = f"{frag}_{i}"
+            if cand not in used:
+                used.add(cand)
+                return cand
+            i += 1
+
+    written: list[tuple[Path, int]] = []
+    for g in genes:
+        sub = work[work["Gene"] == g]
+        if sub.empty:
+            continue
+        frag = unique_frag(str(g))
+        path = out_dir / f"ranked_sequences_{frag}.xlsx"
+        sub.to_excel(path, index=False, engine="openpyxl")
+        written.append((path, len(sub)))
+
+    combined_path = out_dir / "ranked_sequences.xlsx"
+    df.to_excel(combined_path, index=False, engine="openpyxl")
+    written.insert(0, (combined_path, len(df)))
+
+    return written
+
+
 def run_genomic_cnn_spacer_prediction(
     checkpoint: Path,
     fasta: Path,
@@ -112,11 +344,17 @@ def run_genomic_cnn_spacer_prediction(
     device: str | torch.device = "auto",
     batch_size: int = 512,
     spacer_len: int | None = None,
+    spacer_search_edge_reserve: int = DEFAULT_SPACER_SEARCH_EDGE_RESERVE,
 ) -> pd.DataFrame:
     """
-    Load a CNN ``save_torch_best_checkpoint`` file, scan ``fasta`` for YN-PAM sites, predict FE.
+    Load a CNN ``save_torch_best_checkpoint`` file, scan ``fasta`` for YN-PAM sites, predict log2-FE.
 
-    Returns a dataframe sorted by ``Predicted_FE`` (descending). Empty if no sites.
+    YN-PAM scanning runs only on the **middle** of each sequence, excluding ``spacer_search_edge_reserve``
+    bases from each end (default 400), so FASTA records can include flanking sequence for primer tools
+    while spacer hits are kept away from the margins. ``Start`` / ``SpacerStart`` / ``SpacerEnd`` are
+    still **1-based on the full FASTA record**. Use ``0`` to scan the entire sequence (legacy behavior).
+
+    Returns a dataframe sorted by ``Predicted_log2_FE`` (descending). Empty if no sites.
     ``spacer_len`` defaults to ``n_features//4`` from the checkpoint.
     """
     dev = device if isinstance(device, torch.device) else resolve_device(str(device))
@@ -136,10 +374,40 @@ def run_genomic_cnn_spacer_prediction(
             f"spacer_len={spacer_len} incompatible with checkpoint: need L={L_exp} (n_features={n_feat})."
         )
 
-    genomic = load_genomic_sequence(Path(fasta))
-    cand = extract_spacers_with_yn_pam_both_strands(genomic, spacer_len=int(spacer_len))
-    if cand.empty:
-        return cand
+    edge = int(spacer_search_edge_reserve)
+    if edge < 0:
+        raise ValueError(f"spacer_search_edge_reserve must be >= 0; got {edge}")
+
+    fasta_path = Path(fasta)
+    gene_seqs = parse_fasta_records(fasta_path)
+    parts: list[pd.DataFrame] = []
+    for gene, genomic in gene_seqs:
+        if not genomic:
+            continue
+        n = len(genomic)
+        if edge == 0:
+            core = genomic
+            coord_offset = 0
+        elif n <= 2 * edge:
+            continue
+        else:
+            core = genomic[edge : n - edge]
+            coord_offset = edge
+
+        sub = extract_spacers_with_yn_pam_both_strands(core, spacer_len=int(spacer_len))
+        if sub.empty:
+            continue
+        sub = sub.copy()
+        if coord_offset:
+            for col in ("Start", "SpacerStart", "SpacerEnd"):
+                sub[col] = sub[col].astype(int) + coord_offset
+        sub.insert(0, "Gene", gene)
+        parts.append(sub)
+
+    if not parts:
+        return pd.DataFrame()
+
+    cand = pd.concat(parts, axis=0, ignore_index=True)
 
     # Same as CNN training / explain_cnn_layers: sparse one-hot → dense float64
     X_sp = build_feature_matrix(cand, embedding="onehot", kmer_k=2)
@@ -156,5 +424,8 @@ def run_genomic_cnn_spacer_prediction(
         batch_size=int(batch_size),
     )
     out = cand.copy()
-    out["Predicted_FE"] = np.asarray(pred, dtype=float)
-    return out.sort_values("Predicted_FE", ascending=False)
+    out[PREDICTED_LOG2_FE_COL] = np.asarray(pred, dtype=float)
+    out = out.sort_values(PREDICTED_LOG2_FE_COL, ascending=False)
+    # Gene first for readability
+    cols = ["Gene"] + [c for c in out.columns if c != "Gene"]
+    return out[cols]
