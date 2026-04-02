@@ -6,7 +6,7 @@ Repository for training and evaluating models that predict functional enrichment
 
 ```bash
 git clone https://github.com/TereAuge2/evoCAST_spacerModel.git
-cd <repo-name>
+cd evoCAST_spacerModel
 ```
 
 Use SSH instead if you prefer: `git clone git@github.com:TereAuge2/evoCAST_spacerModel.git`
