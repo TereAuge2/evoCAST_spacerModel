@@ -4,9 +4,13 @@ Pick spacer rows per gene: (1) ``number_top_picked`` best model ranks with prime
 (2) ``number_bottom_picked`` worst model ranks (scanning up from the bottom of the ranked list);
 (3) ``number_random_picked`` additional spacers with primers at random from the remainder.
 Runs NCBI Primer-BLAST via :func:`primer.process_dataframe` with ``per_spacer_template=True``.
+Spacers whose ``SpacerSeq`` contains a run of **N** consecutive ``T`` (default **4**, i.e. ``TTTT+``)
+are skipped before Primer-BLAST; set ``--min-consecutive-t-skip 0`` to disable.
+Also skip if any **dinucleotide** repeats contiguously at least **M** times (default **6**, e.g.
+``(AC)⁶`` / ``ACACACACACAC``); set ``--min-dinucleotide-repeat-skip 0`` to disable.
 
 Output table shortens ``Gene`` to the symbol before the first underscore, adds
-``total_spacers_gene`` from the ranked input, and drops ``ncbi_input_fasta``.
+``total_spacers_gene`` from the ranked input (next to ``rank``), and drops ``ncbi_input_fasta``.
 """
 
 from __future__ import annotations
@@ -88,6 +92,87 @@ def _row_has_passing_primers(row: pd.Series) -> bool:
         return False
 
 
+def _should_skip_spacer_for_consecutive_t(row: pd.Series, min_len: int) -> bool:
+    """
+    True if ``SpacerSeq`` contains ``min_len`` or more consecutive T (case-insensitive).
+    If ``min_len`` <= 0, never skip. Missing or empty ``SpacerSeq`` does not skip.
+    """
+    if min_len <= 0:
+        return False
+    if "SpacerSeq" not in row.index:
+        return False
+    v = row.get("SpacerSeq")
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return False
+    s = str(v).strip().upper()
+    if len(s) < min_len:
+        return False
+    return ("T" * min_len) in s
+
+
+def _max_contiguous_dinucleotide_repeats(seq: str) -> int:
+    """
+    Largest ``k`` such that ``SpacerSeq`` contains a substring ``(UV)`` repeated ``k`` times in a row
+    (non-overlapping 2-mers), for some dinucleotide ``UV`` ∈ {A,C,G,T}². Examples: ``ACACAC`` → 3 (AC);
+    ``AAAAAAAAAAAA`` → 6 (AA).
+    """
+    s = "".join(c for c in str(seq).upper() if c in "ACGT")
+    n = len(s)
+    if n < 2:
+        return 0
+    best = 1
+    for i in range(n - 1):
+        unit = s[i : i + 2]
+        rep = 1
+        j = i + 2
+        while j + 2 <= n and s[j : j + 2] == unit:
+            rep += 1
+            j += 2
+        if rep > best:
+            best = rep
+    return best
+
+
+def _should_skip_spacer_for_dinucleotide_repeat(row: pd.Series, min_repeats: int) -> bool:
+    """
+    True if some dinucleotide repeats contiguously at least ``min_repeats`` times.
+    If ``min_repeats`` <= 0, never skip. Missing ``SpacerSeq`` does not skip.
+    Non-ACGT letters are ignored for repeat detection.
+    """
+    if min_repeats <= 0:
+        return False
+    if "SpacerSeq" not in row.index:
+        return False
+    v = row.get("SpacerSeq")
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return False
+    s_clean = "".join(c for c in str(v).upper() if c in "ACGT")
+    if len(s_clean) < 2 * min_repeats:
+        return False
+    return _max_contiguous_dinucleotide_repeats(s_clean) >= min_repeats
+
+
+def _spacer_row_fails_sequence_filters(
+    row: pd.Series,
+    *,
+    min_consecutive_t_skip: int,
+    min_dinucleotide_repeat_skip: int,
+) -> tuple[bool, str]:
+    """
+    Returns ``(skip, reason)`` where ``reason`` is empty if ``skip`` is False.
+    """
+    if min_consecutive_t_skip > 0 and _should_skip_spacer_for_consecutive_t(row, min_consecutive_t_skip):
+        return True, f"≥{min_consecutive_t_skip} consecutive T"
+    if min_dinucleotide_repeat_skip > 0 and _should_skip_spacer_for_dinucleotide_repeat(
+        row, min_dinucleotide_repeat_skip
+    ):
+        return (
+            True,
+            f"dinucleotide repeat ≥{min_dinucleotide_repeat_skip} (e.g. (XY)^{min_dinucleotide_repeat_skip})",
+        )
+    return False, ""
+
+
 def _ensure_strand(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     if "Strand" not in out.columns:
@@ -107,7 +192,7 @@ def format_gene_columns(df: pd.DataFrame, counts_source: pd.DataFrame) -> pd.Dat
     """
     Shorten ``Gene`` to the prefix before the first ``_``, add ``total_spacers_gene`` (row counts per
     short gene derived from ``counts_source``), drop ``ncbi_input_fasta`` if present, and place
-    ``total_spacers_gene`` immediately after ``Gene``.
+    ``total_spacers_gene`` immediately after ``rank`` (if present; otherwise after ``Gene``).
     """
     if df.empty:
         return df
@@ -121,8 +206,12 @@ def format_gene_columns(df: pd.DataFrame, counts_source: pd.DataFrame) -> pd.Dat
     out["total_spacers_gene"] = gshort.map(n_per_short).astype("Int64")
     out["Gene"] = gshort.astype(str)
     cols = [c for c in out.columns if c != "total_spacers_gene"]
-    ig = cols.index("Gene")
-    cols = cols[: ig + 1] + ["total_spacers_gene"] + cols[ig + 1 :]
+    if "rank" in cols:
+        ir = cols.index("rank")
+        cols = cols[: ir + 1] + ["total_spacers_gene"] + cols[ir + 1 :]
+    else:
+        ig = cols.index("Gene")
+        cols = cols[: ig + 1] + ["total_spacers_gene"] + cols[ig + 1 :]
     return out[cols]
 
 
@@ -142,6 +231,8 @@ def pick_spacers_for_gene(
     dry_run: bool,
     verbose: bool,
     primer_kw: dict[str, Any],
+    min_consecutive_t_skip: int = 4,
+    min_dinucleotide_repeat_skip: int = 6,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Returns ``(top_df, worst_df, random_df)`` — primer-annotated rows only, each with ``pick_type``.
@@ -167,6 +258,18 @@ def pick_spacers_for_gene(
     for _, row in df_sorted.iterrows():
         if len(top_rows) >= need:
             break
+        skip, skip_reason = _spacer_row_fails_sequence_filters(
+            row,
+            min_consecutive_t_skip=min_consecutive_t_skip,
+            min_dinucleotide_repeat_skip=min_dinucleotide_repeat_skip,
+        )
+        if skip:
+            print(
+                f"[picking] gene={gene_short} | top_model | skip — {skip_reason} | "
+                f"model_rank={row['rank']} | SpacerStart={row['SpacerStart']}-{row['SpacerEnd']}",
+                flush=True,
+            )
+            continue
         top_attempt += 1
         have = len(top_rows)
         print(
@@ -218,6 +321,18 @@ def pick_spacers_for_gene(
             break
         if _spacer_key(row) in picked_keys:
             continue
+        skip, skip_reason = _spacer_row_fails_sequence_filters(
+            row,
+            min_consecutive_t_skip=min_consecutive_t_skip,
+            min_dinucleotide_repeat_skip=min_dinucleotide_repeat_skip,
+        )
+        if skip:
+            print(
+                f"[picking] gene={gene_short} | worst_model | skip — {skip_reason} | "
+                f"model_rank={row['rank']} | SpacerStart={row['SpacerStart']}-{row['SpacerEnd']}",
+                flush=True,
+            )
+            continue
         worst_attempt += 1
         have_w = len(worst_rows)
         print(
@@ -259,8 +374,19 @@ def pick_spacers_for_gene(
         flush=True,
     )
 
-    # --- Random from remaining ---
-    pool_idx = [i for i in range(len(df_sorted)) if _spacer_key(df_sorted.iloc[i]) not in picked_keys]
+    # --- Random from remaining (exclude already picked and sequence-filtered spacers) ---
+    pool_idx = []
+    for i in range(len(df_sorted)):
+        if _spacer_key(df_sorted.iloc[i]) in picked_keys:
+            continue
+        sk, _ = _spacer_row_fails_sequence_filters(
+            df_sorted.iloc[i],
+            min_consecutive_t_skip=min_consecutive_t_skip,
+            min_dinucleotide_repeat_skip=min_dinucleotide_repeat_skip,
+        )
+        if sk:
+            continue
+        pool_idx.append(i)
     pool_df = df_sorted.iloc[pool_idx].reset_index(drop=True)
     order = rng.permutation(len(pool_df)) if len(pool_df) else np.array([], dtype=int)
 
@@ -327,6 +453,8 @@ def run_picking(
     dry_run: bool,
     verbose: bool,
     primer_kw: dict[str, Any],
+    min_consecutive_t_skip: int = 4,
+    min_dinucleotide_repeat_skip: int = 6,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Returns ``(ranked_with_rank, combined_picks)`` where ``combined_picks`` has primer columns
@@ -365,6 +493,8 @@ def run_picking(
             dry_run=dry_run,
             verbose=verbose,
             primer_kw=primer_kw,
+            min_consecutive_t_skip=min_consecutive_t_skip,
+            min_dinucleotide_repeat_skip=min_dinucleotide_repeat_skip,
         )
         if not top_df.empty:
             all_top.append(top_df)
@@ -414,14 +544,14 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         type=Path,
         required=True,
-        help="Output .xlsx: picked rows (primer columns + pick_type + rank; Gene shortened; total_spacers_gene)",
+        help="Output .xlsx: picked rows (primer columns + pick_type + rank; Gene shortened; total_spacers_gene after rank)",
     )
     ap.add_argument(
         "--output-ranked",
         type=Path,
         default=None,
         metavar="PATH",
-        help="Optional: full ranked table with ``rank`` + short Gene + total_spacers_gene (same layout as --output; csv or xlsx)",
+        help="Optional: full ranked table (same layout as --output: total_spacers_gene after rank; csv or xlsx)",
     )
     ap.add_argument(
         "--gene",
@@ -461,6 +591,28 @@ def main(argv: list[str] | None = None) -> int:
         help="Target count of random spacers with primers per gene (default: 3)",
     )
     ap.add_argument("--seed", type=int, default=42, help="RNG seed for random picks (default: 42)")
+    ap.add_argument(
+        "--min-consecutive-t-skip",
+        type=int,
+        default=4,
+        metavar="N",
+        dest="min_consecutive_t_skip",
+        help=(
+            "Skip spacers whose SpacerSeq contains N consecutive T (case-insensitive); "
+            "default 4 (TTTT or longer). Use 0 to disable."
+        ),
+    )
+    ap.add_argument(
+        "--min-dinucleotide-repeat-skip",
+        type=int,
+        default=6,
+        metavar="M",
+        dest="min_dinucleotide_repeat_skip",
+        help=(
+            "Skip spacers where some dinucleotide repeats contiguously at least M times "
+            "(e.g. M=6 matches ACACACACACAC or AAAAAA... as (AA)^6). Use 0 to disable."
+        ),
+    )
     ap.add_argument("--upstream", type=int, default=DEFAULT_UPSTREAM)
     ap.add_argument("--downstream", type=int, default=DEFAULT_DOWNSTREAM)
     ap.add_argument(
@@ -510,6 +662,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.number_top_picked < 0 or args.number_bottom_picked < 0 or args.number_random_picked < 0:
         raise SystemExit("pick counts must be >= 0")
+    if int(args.min_consecutive_t_skip) < 0:
+        raise SystemExit("--min-consecutive-t-skip must be >= 0")
+    if int(args.min_dinucleotide_repeat_skip) < 0:
+        raise SystemExit("--min-dinucleotide-repeat-skip must be >= 0")
 
     ranked = load_ranked_table(Path(args.input))
     gene_to_seq = load_gene_sequences(Path(args.fasta))
@@ -544,6 +700,8 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=bool(args.dry_run),
         verbose=bool(args.verbose),
         primer_kw=primer_kw,
+        min_consecutive_t_skip=int(args.min_consecutive_t_skip),
+        min_dinucleotide_repeat_skip=int(args.min_dinucleotide_repeat_skip),
     )
 
     combined = finalize_picks_output(combined, ranked_out)
