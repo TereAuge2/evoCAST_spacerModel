@@ -11,6 +11,7 @@ from .inference import (
     plot_predicted_fe_density_by_gene,
     reverse_complement,
     run_genomic_cnn_spacer_prediction,
+    write_ranked_excel_per_gene_partitioned,
     write_ranked_sequences_excel_per_gene,
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "plot_predicted_fe_density_by_gene",
     "reverse_complement",
     "run_genomic_cnn_spacer_prediction",
+    "write_ranked_excel_per_gene_partitioned",
     "write_ranked_sequences_excel_per_gene",
 ]

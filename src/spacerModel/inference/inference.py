@@ -287,10 +287,15 @@ def plot_predicted_fe_density_by_gene(df: pd.DataFrame, outpath: Path) -> list[P
     return png_paths
 
 
-def write_ranked_sequences_excel_per_gene(df: pd.DataFrame, out_dir: Path) -> list[tuple[Path, int]]:
+def write_ranked_sequences_excel_per_gene(
+    df: pd.DataFrame,
+    out_dir: Path,
+    *,
+    stem: str = "ranked_sequences",
+) -> list[tuple[Path, int]]:
     """
-    Write ``ranked_sequences.xlsx`` (all rows) and one ``ranked_sequences_<gene>.xlsx`` per distinct ``Gene``.
-    If ``Gene`` is missing, writes only ``ranked_sequences.xlsx``. Returns ``(path, row_count)`` pairs.
+    Write ``{stem}.xlsx`` (all rows) and one ``{stem}_<gene>.xlsx`` per distinct ``Gene``.
+    If ``Gene`` is missing, writes only ``{stem}.xlsx``. Returns ``(path, row_count)`` pairs.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -298,7 +303,7 @@ def write_ranked_sequences_excel_per_gene(df: pd.DataFrame, out_dir: Path) -> li
         return []
 
     if "Gene" not in df.columns:
-        path = out_dir / "ranked_sequences.xlsx"
+        path = out_dir / f"{stem}.xlsx"
         df.to_excel(path, index=False, engine="openpyxl")
         return [(path, len(df))]
 
@@ -326,13 +331,65 @@ def write_ranked_sequences_excel_per_gene(df: pd.DataFrame, out_dir: Path) -> li
         if sub.empty:
             continue
         frag = unique_frag(str(g))
-        path = out_dir / f"ranked_sequences_{frag}.xlsx"
+        path = out_dir / f"{stem}_{frag}.xlsx"
         sub.to_excel(path, index=False, engine="openpyxl")
         written.append((path, len(sub)))
 
-    combined_path = out_dir / "ranked_sequences.xlsx"
+    combined_path = out_dir / f"{stem}.xlsx"
     df.to_excel(combined_path, index=False, engine="openpyxl")
     written.insert(0, (combined_path, len(df)))
+
+    return written
+
+
+def write_ranked_excel_per_gene_partitioned(
+    df: pd.DataFrame,
+    out_dir: Path,
+    *,
+    stem: str,
+    partition_key: pd.Series,
+) -> list[tuple[Path, int]]:
+    """
+    Write ``{stem}.xlsx`` (all rows) and one ``{stem}_{frag}.xlsx`` per distinct label in
+    ``partition_key`` (must align with ``df.index``). Filenames use :func:`_safe_plot_stem_fragment`
+    with collision suffixes ``_2``, ``_3``, … matching :func:`write_ranked_sequences_excel_per_gene`.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if df.empty:
+        return []
+
+    if len(partition_key) != len(df) or not partition_key.index.equals(df.index):
+        raise ValueError("partition_key must be aligned with df (same length and index as df)")
+
+    combined_path = out_dir / f"{stem}.xlsx"
+    df.to_excel(combined_path, index=False, engine="openpyxl")
+    written: list[tuple[Path, int]] = [(combined_path, len(df))]
+
+    keys = sorted(partition_key.unique(), key=lambda x: str(x))
+    used: set[str] = set()
+
+    def unique_frag(label: str) -> str:
+        frag = _safe_plot_stem_fragment(label)
+        if frag not in used:
+            used.add(frag)
+            return frag
+        i = 2
+        while True:
+            cand = f"{frag}_{i}"
+            if cand not in used:
+                used.add(cand)
+                return cand
+            i += 1
+
+    for k in keys:
+        sub = df.loc[partition_key == k]
+        if sub.empty:
+            continue
+        frag = unique_frag(str(k))
+        path = out_dir / f"{stem}_{frag}.xlsx"
+        sub.to_excel(path, index=False, engine="openpyxl")
+        written.append((path, len(sub)))
 
     return written
 

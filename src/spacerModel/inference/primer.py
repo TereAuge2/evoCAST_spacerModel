@@ -300,6 +300,37 @@ def spacer_gc_content_on_ref(ref_seq: str, spacer_start_1b: int, spacer_end_1b: 
     return gc / len(frag)
 
 
+def add_spacer_gc_column(
+    df: pd.DataFrame,
+    gene_to_seq: dict[str, str],
+    *,
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """
+    Add ``spacer_GC_content`` (G+C fraction) on the reference for each row.
+
+    Requires ``Gene``, ``SpacerStart``, ``SpacerEnd`` (1-based on the full FASTA record).
+    Uses :func:`resolve_fasta_for_gene` and :func:`spacer_gc_content_on_ref`.
+    """
+    if df.empty:
+        return df
+    out = df.copy()
+    gcs: list[float | None] = []
+    for _, row in out.iterrows():
+        resolved = resolve_fasta_for_gene(
+            str(row["Gene"]), gene_to_seq, verbose=verbose, log_prefix=""
+        )
+        if resolved is None:
+            gcs.append(None)
+            continue
+        _, seq = resolved
+        ss = int(row["SpacerStart"])
+        se = int(row["SpacerEnd"])
+        gcs.append(spacer_gc_content_on_ref(seq, ss, se))
+    out["spacer_GC_content"] = gcs
+    return out
+
+
 def spacer_coords_on_blast_template(
     ref_seq: str, spacer_start_1b: int, spacer_end_1b: int, strand: str
 ) -> tuple[int, int] | None:
