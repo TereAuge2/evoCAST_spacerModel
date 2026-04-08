@@ -180,14 +180,15 @@ def plot_abs_weight_sum(df_coef: pd.DataFrame, outpath: Path, *, title: str) -> 
     bases = [c for c in dfa.columns if c != "position"]
     dfa["abs_weight_sum"] = dfa[bases].abs().sum(axis=1)
     n_pos = int(len(dfa))
-    # Wide figure + small horizontal tick labels (no rotation).
-    width_cm = max(28.0, min(52.0, 0.95 * float(n_pos)))
+    # Same scaling rule as older wide bar plots, but halved so width matches the
+    # ~16 cm *weights_by_position* figures (the old 28–52 cm range read ~2× wide).
+    width_cm = max(14.0, min(26.0, 0.475 * float(n_pos)))
     plt.figure(figsize=(width_cm / 2.54, 12.0 / 2.54))
     ax = sns.barplot(data=dfa, x="position", y="abs_weight_sum", color="black", alpha=0.5)
     ax.set_title(title)
     ax.set_xlabel("Position")
     ax.set_ylabel("Sum of |weights| across A/C/G/T")
-    ax.tick_params(axis="x", labelsize=7)
+    ax.tick_params(axis="x", labelsize=6)
     savefig(outpath)
 
 

@@ -51,12 +51,13 @@ _CNN_KEYS_TO_ARG: dict[str, str] = {
     "cnn_head_hidden": "head_hidden",
 }
 
+# Match tuned CNN defaults (see train_torch._TORCH_HYPEROPT_DEFAULTS / best_hyperparameters.json).
 _TORCH_TRAIN_DEFAULTS: dict[str, Any] = {
-    "lr": round_lr_wd(1e-3),
-    "weight_decay": round_lr_wd(1e-4),
-    "batch_size": 64,
-    "dropout": 0.2,
-    "max_epochs": 60,
+    "lr": round_lr_wd(0.00013),
+    "weight_decay": round_lr_wd(0.00091),
+    "batch_size": 32,
+    "dropout": 0.3,
+    "max_epochs": 200,
     "patience": 10,
     "min_delta": 1e-4,
 }
@@ -112,18 +113,18 @@ def default_baseline_row_mlp() -> dict[str, Any]:
 
 
 def default_baseline_row_cnn() -> dict[str, Any]:
-    """Match ``_TORCH_TRAIN_DEFAULTS`` and :class:`CNN1DRegressorNet` default architecture."""
+    """Match ``_TORCH_TRAIN_DEFAULTS`` and tuned CNN architecture (train_torch CLI defaults)."""
     return {
         "lr": round_lr_wd(float(_TORCH_TRAIN_DEFAULTS["lr"])),
         "weight_decay": round_lr_wd(float(_TORCH_TRAIN_DEFAULTS["weight_decay"])),
         "batch_size": int(_TORCH_TRAIN_DEFAULTS["batch_size"]),
         "dropout": round_dropout(float(_TORCH_TRAIN_DEFAULTS["dropout"])),
-        "cnn_conv1_channels": 64,
-        "cnn_conv2_channels": 64,
-        "cnn_head_hidden": 128,
-        "cnn_kernel1": 5,
+        "cnn_conv1_channels": 114,
+        "cnn_conv2_channels": 124,
+        "cnn_head_hidden": 256,
+        "cnn_kernel1": 3,
         "cnn_kernel2": 3,
-        "cnn_pool_out": 8,
+        "cnn_pool_out": 16,
     }
 
 

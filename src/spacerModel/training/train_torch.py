@@ -340,12 +340,13 @@ def round_lr_wd(x: float) -> float:
     return round(float(x), 5)
 
 
+# Defaults aligned with tuned CNN run (e.g. best_hyperparameters.json from CNN hyperparameter search).
 _TORCH_HYPEROPT_DEFAULTS: dict[str, Any] = {
-    "lr": round_lr_wd(1e-3),
-    "weight_decay": round_lr_wd(1e-4),
-    "batch_size": 64,
-    "dropout": 0.2,
-    "max_epochs": 60,
+    "lr": round_lr_wd(0.00013),
+    "weight_decay": round_lr_wd(0.00091),
+    "batch_size": 32,
+    "dropout": 0.3,
+    "max_epochs": 200,
     "patience": 10,
     "min_delta": 1e-4,
 }
@@ -442,7 +443,7 @@ def load_torch_best_checkpoint(path: Path, device: torch.device) -> tuple[nn.Mod
     pack = torch.load(path, map_location=device, weights_only=False)
     kind = pack["model_kind"]
     n_features = int(pack["n_features"])
-    dropout = float(pack.get("dropout", 0.2))
+    dropout = float(pack.get("dropout", 0.3))
     mlp_hidden = tuple(int(x) for x in pack["mlp_hidden"])
     cnn_kwargs = pack.get("cnn_kwargs") or None
     model = _build_model(
@@ -796,20 +797,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--output-dir", default="output/modeling")
     ap.add_argument("--run-name", default="", help="Subfolder under output-dir")
     ap.add_argument("--model-kind", choices=["mlp", "cnn"], required=True)
-    ap.add_argument("--max-epochs", type=int, default=60)
-    ap.add_argument("--batch-size", type=int, default=64)
-    ap.add_argument("--lr", type=float, default=1e-3)
-    ap.add_argument("--weight-decay", type=float, default=1e-4)
+    ap.add_argument("--max-epochs", type=int, default=200)
+    ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--lr", type=float, default=0.00013)
+    ap.add_argument("--weight-decay", type=float, default=0.00091)
     ap.add_argument("--patience", type=int, default=10)
     ap.add_argument("--min-delta", type=float, default=1e-4)
     ap.add_argument("--mlp-hidden", default="256,128", help="Comma-separated hidden sizes for MLP")
-    ap.add_argument("--dropout", type=float, default=0.2)
-    ap.add_argument("--cnn-conv1-channels", type=int, default=None, help="CNN only: first conv width")
-    ap.add_argument("--cnn-conv2-channels", type=int, default=None, help="CNN only: second conv width")
-    ap.add_argument("--cnn-head-hidden", type=int, default=None, help="CNN only: linear head hidden size")
-    ap.add_argument("--cnn-kernel1", type=int, default=None, help="CNN only: first kernel size")
-    ap.add_argument("--cnn-kernel2", type=int, default=None, help="CNN only: second kernel size")
-    ap.add_argument("--cnn-pool-out", type=int, default=None, help="CNN only: adaptive pool length")
+    ap.add_argument("--dropout", type=float, default=0.3)
+    ap.add_argument("--cnn-conv1-channels", type=int, default=114, help="CNN only: first conv width")
+    ap.add_argument("--cnn-conv2-channels", type=int, default=124, help="CNN only: second conv width")
+    ap.add_argument("--cnn-head-hidden", type=int, default=256, help="CNN only: linear head hidden size")
+    ap.add_argument("--cnn-kernel1", type=int, default=3, help="CNN only: first kernel size")
+    ap.add_argument("--cnn-kernel2", type=int, default=3, help="CNN only: second kernel size")
+    ap.add_argument("--cnn-pool-out", type=int, default=16, help="CNN only: adaptive pool length")
     ap.add_argument("--device", default="auto", help="auto | cpu | cuda")
     ap.add_argument("--make-plots", action="store_true", default=True)
     ap.add_argument("--use-hexbin", action="store_true", default=True)

@@ -78,13 +78,13 @@ class CNN1DRegressorNet(nn.Module):
         self,
         in_channels: int,
         *,
-        conv1_channels: int = 64,
-        conv2_channels: int = 64,
-        kernel1: int = 5,
+        conv1_channels: int = 114,
+        conv2_channels: int = 124,
+        kernel1: int = 3,
         kernel2: int = 3,
-        pool_out: int = 8,
-        head_hidden: int = 128,
-        dropout: float = 0.2,
+        pool_out: int = 16,
+        head_hidden: int = 256,
+        dropout: float = 0.3,
     ) -> None:
         super().__init__()
         if int(in_channels) != 4:
