@@ -36,6 +36,18 @@ python -m spacerModel.interpretation.make_cluster_logo_movie \
   --which by_locus \
   --fps 2
 
+#"all", "clusters", "splits", "by_locus"
+export PYTHONPATH=src
+python -m spacerModel.interpretation.make_cluster_logo_movie \
+  --logo-dir output/data_processing/logos \
+  --which clusters 
+
+export PYTHONPATH=src
+python -m spacerModel.interpretation.make_cluster_logo_movie \
+  --logo-dir output/data_processing/logos \
+  --which splits \
+  --fps 2
+
 
 ## Linear position weights
 python src/spacerModel/interpretation/linear_position_weights.py \
@@ -62,6 +74,18 @@ python src/spacerModel/simple_modeling/train_models.py --split-col SplitRandom
 
 PYTHONPATH=src python src/spacerModel/simple_modeling/combine_cv_summaries.py
 
+
+#replotting with median baseline
+
+export PYTHONPATH=src
+python -m spacerModel.simple_modeling.replot_cv_summaries \
+  --input-base output/modeling \
+  --run-dirs \
+    "0_Split__kmer_gc_onehot_raw__k2__A11038783_T0__20260326_204925" \
+    "0_SplitRandom__kmer_gc_onehot_raw__k2__A11039227_T0__20260326_210821" \
+    "1_Best_initial_CV_pre_hyperopt_Split__kmer_gc_onehot_raw__k2_manual" \
+  --median-baseline
+  
 #Plotting (old scripts)
 python src/spacerModel/simple_modeling/replot_cv_summaries.py \
   --input-base output/modeling \
@@ -131,4 +155,5 @@ PYTHONPATH=src python -m spacerModel.inference.picking \
 # Override paths: sbatch --export=ALL,PICK_INPUT=...,PICK_FASTA=...,PICK_BOTTOM=0,...
 
 
-#combine with simon's expert spacers 
+#CNN surrogate XGBoost
+sbatch src/spacerModel/scripts/orcd_cnn_surrogate_xgboost.sbatch
