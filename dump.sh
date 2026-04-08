@@ -29,6 +29,14 @@ python src/spacerModel/data/analyze_dataset.py
 python src/spacerModel/data/analyze_dataset.py --splits-excel output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx
 
 
+# logos
+export PYTHONPATH=src
+python -m spacerModel.interpretation.make_cluster_logo_movie \
+  --logo-dir output/data_processing/logos \
+  --which by_locus \
+  --fps 2
+
+
 ## Linear position weights
 python src/spacerModel/interpretation/linear_position_weights.py \
   --excel output/data_processing/251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx \

@@ -33,6 +33,16 @@ class PlotStyle:
     font_size: int = 14
 
 
+# Sequence logos: fixed y limits so auto-scaling does not zoom in on tiny stacks when
+# information vs a uniform background is low (which exaggerates weak differences).
+_LOGO_INFORMATION_YLIM: tuple[float, float] = (0.0, 2.0)  # bits; max column height vs uniform = log2(4)
+
+
+def _plot_axis_label_for_fe_column(col: str) -> str:
+    """Axis or colorbar label when plotting the target score; the Excel column remains ``FE``."""
+    return "log2-FE" if col == "FE" else col
+
+
 def set_plot_style(style: PlotStyle) -> None:
     mpl.rcParams.update(mpl.rcParamsDefault)
     # Prefer Arial, but fall back cleanly on HPC nodes where Arial isn't installed.
@@ -142,6 +152,7 @@ def plot_sequence_logo(freq_df: pd.DataFrame, outpath: Path, *, style: PlotStyle
     ax = plt.gca()
     logo = logomaker.Logo(info_df, ax=ax, color_scheme="classic")
     _ = logo
+    ax.set_ylim(*_LOGO_INFORMATION_YLIM)
     ax.set_title(title.replace(" (", "\n("))
     ax.set_xlabel("Position")
     ax.set_ylabel("Bits")
@@ -183,7 +194,7 @@ def plot_sequence_logo_vs_background(
 ) -> None:
     """
     Bits logo normalized to the empirical background (full library).
-    Y-axis is "Bits vs background" (KL contribution per symbol).
+    Y-axis is "Bits vs background" (KL contribution per symbol); limits follow the data (no fixed window).
     """
     set_plot_style(style)
     bits_df = _relative_bits_matrix(freq_df, background_df)
@@ -239,6 +250,7 @@ def elbow_kmeans(X2: np.ndarray, k_values: list[int], *, random_state: int = 0) 
         rows.append({"k": k, "inertia": float(km.inertia_)})
     return pd.DataFrame(rows)
 
+
 def kneedle_k_from_elbow(df_elbow: pd.DataFrame) -> int:
     """
     Simple Kneedle-style knee detection for a decreasing curve (inertia vs k).
@@ -282,8 +294,8 @@ def plot_fe_density(df: pd.DataFrame, outpath: Path, *, style: PlotStyle) -> Non
     fe = to_float_series(df["FE"]) if "FE" in df.columns else pd.Series([], dtype=float)
     fe = fe.dropna()
     ax = sns.kdeplot(x=fe, fill=True)
-    ax.set_title("FE density")
-    ax.set_xlabel("FE")
+    ax.set_title("log2-FE density")
+    ax.set_xlabel("log2-FE")
     ax.set_ylabel("Density")
     savefig(outpath, dpi=style.dpi)
 
@@ -316,8 +328,8 @@ def plot_fe_density_by_split(
         common_norm=False,
         linewidth=1.0,
     )
-    ax.set_title("FE density by split")
-    ax.set_xlabel("FE")
+    ax.set_title("log2-FE density by split")
+    ax.set_xlabel("log2-FE")
     ax.set_ylabel("Density")
     savefig(outpath, dpi=style.dpi)
 
@@ -343,8 +355,8 @@ def plot_fe_density_by_locus(df: pd.DataFrame, outpath: Path, *, style: PlotStyl
         common_norm=False,
         linewidth=1.0,
     )
-    ax.set_title("FE density by Locus")
-    ax.set_xlabel("FE")
+    ax.set_title("log2-FE density by Locus")
+    ax.set_xlabel("log2-FE")
     ax.set_ylabel("Density")
     savefig(outpath, dpi=style.dpi)
 
@@ -398,7 +410,7 @@ def plot_fe_binned_sequence_logos(
             freq_b,
             logos_dir / f"logo_{bn}.png",
             style=style,
-            title=f"Sequence logo — FE bin {b + 1}/{n_bins}\n[{left:.4g}, {right:.4g}] (n={n})",
+            title=f"Sequence logo — log2-FE bin {b + 1}/{n_bins}\n[{left:.4g}, {right:.4g}] (n={n})",
         )
         if log:
             log(f"Saved FE-binned logo bin {b + 1}/{n_bins} (n={n})")
@@ -582,7 +594,7 @@ def plot_embedding_continuous(
     sm = cm.ScalarMappable(cmap="viridis", norm=norm)
     sm.set_array([])
     cbar = fig.colorbar(sm, cax=cax)
-    cbar.set_label(value_col)
+    cbar.set_label(_plot_axis_label_for_fe_column(value_col))
 
     savefig(outpath, dpi=style.dpi, tight=False)
 
@@ -824,6 +836,22 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Plot PCA/t-SNE/UMAP for all k in [min-k, max-k] (default: only knee k)",
     )
+    ap.add_argument(
+        "--logo-movies",
+        action="store_true",
+        help="Write cluster/locus/split logo GIF (+ MP4) movies under output logos/ (off by default)",
+    )
+    ap.add_argument(
+        "--logo-movie-fps",
+        type=float,
+        default=3.0,
+        help="FPS when using --logo-movies (default: 3)",
+    )
+    ap.add_argument(
+        "--no-logo-movie-mp4",
+        action="store_true",
+        help="With --logo-movies: only write GIF (skip MP4; avoids needing imageio[ffmpeg])",
+    )
     args = ap.parse_args(argv)
 
     t0 = time.time()
@@ -949,7 +977,7 @@ def main(argv: list[str] | None = None) -> int:
                         freq_top,
                         logos_dir / f"logo_top{n_top}_by_FE.png",
                         style=style,
-                        title=f"Sequence logo — top {n_top} by FE (n={len(part)})",
+                        title=f"Sequence logo — top {n_top} by log2-FE (n={len(part)})",
                     )
                     # Background-normalized bits logo: enrichment/depletion relative to full library composition.
                     plot_sequence_logo_vs_background(
@@ -957,7 +985,7 @@ def main(argv: list[str] | None = None) -> int:
                         freq_all,
                         logos_dir / f"logo_top{n_top}_by_FE_vs_library.png",
                         style=style,
-                        title=f"Bits vs library — top {n_top} by FE (n={len(part)})",
+                        title=f"Bits vs library — top {n_top} by log2-FE (n={len(part)})",
                     )
                 log("Saved top-N activity sequence logos (top 50/100/200/500/1000 by FE)")
 
@@ -1055,9 +1083,9 @@ def main(argv: list[str] | None = None) -> int:
                             fliersize=1.0,
                             linewidth=0.7,
                         )
-                        ax.set_title("FE distribution per KMeansCluster")
+                        ax.set_title("log2-FE distribution per KMeansCluster")
                         ax.set_xlabel("KMeansCluster")
-                        ax.set_ylabel("FE")
+                        ax.set_ylabel("log2-FE")
                         savefig(out_dir / "fe_boxplot_per_cluster.png", dpi=style.dpi)
                         log("Saved FE boxplot per cluster")
             else:
@@ -1128,6 +1156,15 @@ def main(argv: list[str] | None = None) -> int:
             )
             log("Computed UMAP embedding")
 
+        k_values = list(range(args.min_k, args.max_k + 1))
+        log(f"Computing elbow curve for k in [{args.min_k}, {args.max_k}]")
+        df_elbow = elbow_kmeans(Xr, k_values, random_state=args.random_state)
+        knee_k = kneedle_k_from_elbow(df_elbow)
+        (out_dir / "kmeans_elbow_kneedle.txt").write_text(f"kneedle_k\t{knee_k}\n")
+        df_elbow.to_csv(out_dir / "kmeans_elbow.csv", index=False)
+        plot_elbow(df_elbow, out_dir / "kmeans_elbow.png", style=style, knee_k=knee_k)
+        log("Saved elbow plot")
+
         # Color embeddings by FE (continuous), if available
         if fe_series is not None:
             log("Plotting embeddings colored by FE")
@@ -1140,7 +1177,7 @@ def main(argv: list[str] | None = None) -> int:
                     df_pca_fe,
                     pca_dir / f"{'svd' if pc_method == 'TruncatedSVD' else 'pca'}_{x1.lower()}_{x2.lower()}_by_FE.png",
                     style=style,
-                    title=f"{pc_method} (one-hot SpacerSeq)\nColored by FE",
+                    title="PCA",
                     x_col=x1,
                     y_col=x2,
                     value_col="FE",
@@ -1155,7 +1192,7 @@ def main(argv: list[str] | None = None) -> int:
                         df_tsne_fe,
                         tsne_dir / "tsne_1_2_by_FE.png",
                         style=style,
-                        title="t-SNE (one-hot SpacerSeq)\nColored by FE",
+                        title="t-SNE",
                         x_col="tSNE1",
                         y_col="tSNE2",
                         value_col="FE",
@@ -1170,7 +1207,7 @@ def main(argv: list[str] | None = None) -> int:
                         df_umap_fe,
                         umap_dir / "umap_1_2_by_FE.png",
                         style=style,
-                        title="UMAP (one-hot SpacerSeq)\nColored by FE",
+                        title="UMAP",
                         x_col="UMAP1",
                         y_col="UMAP2",
                         value_col="FE",
@@ -1191,7 +1228,7 @@ def main(argv: list[str] | None = None) -> int:
                     df_pca_l,
                     pca_dir / f"{'svd' if pc_method == 'TruncatedSVD' else 'pca'}_{x1.lower()}_{x2.lower()}_by_Locus.png",
                     style=style,
-                    title=f"{pc_method} (one-hot SpacerSeq)\nColored by Locus",
+                    title="PCA",
                     x_col=x1,
                     y_col=x2,
                     category_col="Locus",
@@ -1204,7 +1241,7 @@ def main(argv: list[str] | None = None) -> int:
                         df_tsne_l,
                         tsne_dir / "tsne_1_2_by_Locus.png",
                         style=style,
-                        title="t-SNE (one-hot SpacerSeq)\nColored by Locus",
+                        title="t-SNE",
                         x_col="tSNE1",
                         y_col="tSNE2",
                         category_col="Locus",
@@ -1217,7 +1254,7 @@ def main(argv: list[str] | None = None) -> int:
                         df_umap_l,
                         umap_dir / "umap_1_2_by_Locus.png",
                         style=style,
-                        title="UMAP (one-hot SpacerSeq)\nColored by Locus",
+                        title="UMAP",
                         x_col="UMAP1",
                         y_col="UMAP2",
                         category_col="Locus",
@@ -1225,19 +1262,29 @@ def main(argv: list[str] | None = None) -> int:
 
             log("Saved Locus-colored embedding plots")
 
-        k_values = list(range(args.min_k, args.max_k + 1))
-        log(f"Computing elbow curve for k in [{args.min_k}, {args.max_k}]")
-        df_elbow = elbow_kmeans(Xr, k_values, random_state=args.random_state)
-        knee_k = kneedle_k_from_elbow(df_elbow)
-        (out_dir / "kmeans_elbow_kneedle.txt").write_text(f"kneedle_k\t{knee_k}\n")
-        df_elbow.to_csv(out_dir / "kmeans_elbow.csv", index=False)
-        plot_elbow(df_elbow, out_dir / "kmeans_elbow.png", style=style, knee_k=knee_k)
-        log("Saved elbow plot")
-
         # Final clustering at the elbow k
         log(f"Fitting final KMeans for split/labels (k={knee_k}, ClusterSVD={cluster_dim})")
         km_final = KMeans(n_clusters=int(knee_k), n_init="auto", random_state=args.random_state)
         cluster_labels = km_final.fit_predict(Xr).astype(int)
+
+        # Per-cluster logos from this run's elbow KMeans (always written here so logo_cluster*.png
+        # match current clustering/plot style; the optional splits-excel block above may also write
+        # these names earlier — this pass overwrites with the authoritative labels from this run.)
+        log("Computing per-cluster sequence logos (elbow KMeans on ClusterSVD)")
+        for cid in sorted(np.unique(cluster_labels)):
+            mask = cluster_labels == cid
+            n_c = int(np.sum(mask))
+            sub_seq = df.loc[mask, "SpacerSeq"]
+            freq_c, _ = dna_position_frequency_matrix(sub_seq)
+            cid_i = int(cid)
+            freq_c.to_csv(logos_dir / f"logo_cluster{cid_i}_freq.csv")
+            plot_sequence_logo(
+                freq_c,
+                logos_dir / f"logo_cluster{cid_i}.png",
+                style=style,
+                title=f"Sequence logo — KMeansCluster {cid_i} (n={n_c})",
+            )
+        log("Saved per-cluster sequence logos (logo_cluster*.png)")
 
         # Export an augmented Excel (does not overwrite the input file)
         if args.export_excel:
@@ -1254,6 +1301,25 @@ def main(argv: list[str] | None = None) -> int:
             df_export["KMeansCluster"] = cluster_labels
             df_export["Split"] = split_labels
             df_export["SplitRandom"] = split_random
+
+            # Per-split sequence logos from the same Split column as the exported Excel (authoritative).
+            # Without this, logos only came from an optional early --splits-excel file and would not
+            # update when re-running with a fresh cluster assignment.
+            if "SpacerSeq" in df_export.columns:
+                log("Computing per-split sequence logos (cluster-grouped Split)")
+                for split_name, subdf in df_export.groupby("Split", sort=True):
+                    if pd.isna(split_name):
+                        continue
+                    split_name_str = str(split_name)
+                    freq_sp, _ = dna_position_frequency_matrix(subdf["SpacerSeq"])
+                    freq_sp.to_csv(logos_dir / f"logo_{split_name_str}_freq.csv")
+                    plot_sequence_logo(
+                        freq_sp,
+                        logos_dir / f"logo_{split_name_str}.png",
+                        style=style,
+                        title=f"Sequence logo — {split_name_str} (n={len(subdf)})",
+                    )
+                log("Saved per-split sequence logos (logo_cv*.png, logo_test.png, …)")
 
             # Print counts per category for quick sanity checks
             log("Split counts (cluster-grouped):")
@@ -1305,7 +1371,8 @@ def main(argv: list[str] | None = None) -> int:
         for k in plot_ks:
             log(f"Clustering + plotting (k={k})")
             km = KMeans(n_clusters=k, n_init="auto", random_state=args.random_state)
-            labels = km.fit_predict(Xr).astype(int).astype(str)
+            labels_int = km.fit_predict(Xr)
+            labels = labels_int.astype(str)
 
             df_plot_pca = df_pcs.copy()
             df_plot_pca["cluster"] = labels
@@ -1314,7 +1381,7 @@ def main(argv: list[str] | None = None) -> int:
                 pca_dir
                 / f"{'svd' if pc_method == 'TruncatedSVD' else 'pca'}_{x1.lower()}_{x2.lower()}_kmeans_k{k}.png",
                 style=style,
-                title=f"{pc_method} (one-hot SpacerSeq)\nKMeans k={k} (ClusterSVD={cluster_dim})",
+                title="PCA",
                 x_col=x1,
                 y_col=x2,
             )
@@ -1325,7 +1392,7 @@ def main(argv: list[str] | None = None) -> int:
                     df_tsne,
                     tsne_dir / f"tsne_1_2_kmeans_k{k}.png",
                     style=style,
-                    title=f"t-SNE (one-hot SpacerSeq)\nKMeans k={k} (EmbedSVD={cluster_dim})",
+                    title="t-SNE",
                     x_col="tSNE1",
                     y_col="tSNE2",
                 )
@@ -1336,10 +1403,24 @@ def main(argv: list[str] | None = None) -> int:
                     df_umap,
                     umap_dir / f"umap_1_2_kmeans_k{k}.png",
                     style=style,
-                    title=f"UMAP (one-hot SpacerSeq)\nKMeans k={k} (EmbedSVD={cluster_dim})",
+                    title="UMAP",
                     x_col="UMAP1",
                     y_col="UMAP2",
                 )
+
+        if args.logo_movies:
+            try:
+                from spacerModel.interpretation.make_cluster_logo_movie import write_logo_movies
+
+                log("Writing logo movies (cluster_logos / locus_logos / split_logos)…")
+                write_logo_movies(
+                    logos_dir,
+                    fps=float(args.logo_movie_fps),
+                    no_mp4=bool(args.no_logo_movie_mp4),
+                    log=log,
+                )
+            except ImportError as e:
+                log(f"Logo movies: skipped ({e})")
 
         log("Done")
 

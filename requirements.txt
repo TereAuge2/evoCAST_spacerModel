@@ -1,4 +1,4 @@
-annotated-doc==0.0.4
+miannotated-doc==0.0.4
 annotated-types==0.7.0
 anyio @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_anyio_1764375386/work
 archspec @ file:///home/conda/feedstock_root/build_artifacts/archspec_1737352602016/work

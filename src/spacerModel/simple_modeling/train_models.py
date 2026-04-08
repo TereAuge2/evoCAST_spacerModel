@@ -12,6 +12,7 @@ import pandas as pd
 from scipy import sparse
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import seaborn as sns
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.compose import TransformedTargetRegressor
@@ -225,8 +226,8 @@ def regression_scatter_plot(
     y_pred: np.ndarray,
     *,
     title: str,
-    xlab: str = "log2 enrichment (measured)",
-    ylab: str = "log2 enrichment (predicted)",
+    xlab: str = "log2-FE (measured)",
+    ylab: str = "log2-FE (predicted)",
     outpath: Path,
     width_cm: float = 18.0,
     height_cm: float = 12.0,
@@ -328,7 +329,144 @@ def regression_scatter_plot(
     plt.close(fig)
 
 
-def plot_cv_summary(df_scores: pd.DataFrame, outpath: Path, *, title: str) -> None:
+def y_cv_and_groups_from_excel(
+    excel_path: Path,
+    *,
+    sheet: str | int = 0,
+    split_col: str,
+    target_col: str = "FE",
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    CV rows only (split labels starting with ``cv``), same filter as ``train_models.main``.
+    Returns ``(y_cv, groups)`` for median-baseline metrics.
+    """
+    df = pd.read_excel(excel_path, sheet_name=sheet, engine="openpyxl")
+    needed = {split_col, target_col}
+    missing = needed - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing columns in Excel: {sorted(missing)}")
+    df = df.copy()
+    df[target_col] = pd.to_numeric(df[target_col], errors="coerce")
+    df = df[df[target_col].notna()].reset_index(drop=True)
+    mask_cv = df[split_col].astype(str).str.startswith("cv")
+    df_cv = df.loc[mask_cv].reset_index(drop=True)
+    if df_cv.empty:
+        raise ValueError("No CV rows found (expected Split values like cv1..cv5).")
+    y_cv = df_cv[target_col].to_numpy(dtype=float)
+    groups = df_cv[split_col].astype(str).to_numpy()
+    return y_cv, groups
+
+
+def _safe_nanmean(values: list[float] | np.ndarray) -> float:
+    """``np.nanmean`` on an empty array warns; return NaN instead.
+
+    Do not use ``if not values``: NumPy arrays can be non-empty in Python truthiness
+    but still yield ``size == 0`` after ``asarray`` (e.g. nested empty arrays), and
+    ``bool(ndarray)`` is ambiguous for multi-element arrays.
+    """
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return float("nan")
+    return float(np.nanmean(arr))
+
+
+def median_baseline_cv_metric_means(y_cv: np.ndarray, groups: np.ndarray) -> dict[str, float]:
+    """
+    GroupKFold on CV rows only: each fold predicts ``median(y_train)`` on validation.
+    Returns mean of RMSE / MAE / R² / correlations / EF10% across folds (one scalar per metric).
+    """
+    keys = ["rmse", "mae", "r2", "pearson_r", "spearman_rho", "ef10"]
+    nan_all = {k: float("nan") for k in keys}
+
+    y_cv = np.asarray(y_cv, dtype=float)
+    groups = np.asarray(groups)
+    if y_cv.size == 0 or groups.size == 0:
+        return nan_all
+
+    unique_groups = sorted(set(groups.tolist()))
+    # GroupKFold needs at least 2 groups; with 1 group there are no valid train/val splits.
+    if len(unique_groups) < 2:
+        return nan_all
+
+    n_splits = min(5, len(unique_groups))
+    gkf = GroupKFold(n_splits=n_splits)
+    X_dummy = np.zeros((len(y_cv), 1))
+
+    bucket: dict[str, list[float]] = {k: [] for k in keys}
+    for tr, va in gkf.split(X_dummy, y_cv, groups=groups):
+        med = float(np.median(y_cv[tr]))
+        pred = np.full(y_cv[va].shape, med, dtype=float)
+        yt = y_cv[va]
+        m = compute_metrics(yt, pred)
+        corr = compute_corr_metrics(yt, pred)
+        ef10 = enrichment_factor_top_frac(yt, pred, frac=0.10)
+        row = {**m, **corr, "ef10": ef10}
+        for k in bucket:
+            bucket[k].append(float(row[k]))
+
+    # Pearson/Spearman are often NaN: predictions are constant per fold, so correlation is undefined.
+    return {k: _safe_nanmean(vs) for k, vs in bucket.items()}
+
+
+# CV summary bar colors: pastel palette by model family (see legend in ``plot_cv_summary``).
+_CV_MODEL_TO_FAMILY: dict[str, str] = {
+    "cnn_onehot": "cnn",
+    "cnn1d": "cnn",
+    "mlp": "mlp",
+    "nusvr_rbf": "svr",
+    "svr_rbf": "svr",
+    "kernel_ridge_rbf": "svr",
+    "elasticnet": "linear",
+    "lasso": "linear",
+    "ridge": "linear",
+    "xgboost": "trees",
+    "gbr": "trees",
+    "extratrees": "trees",
+    "rf": "trees",
+    "rf_simon": "trees",
+    "knn": "knn",
+}
+_CV_MODEL_FAMILY_ORDER: tuple[str, ...] = ("cnn", "mlp", "svr", "linear", "trees", "knn", "other")
+# Pastels chosen so adjacent families read clearly (SVR = cool cyan/teal; trees = warm sage).
+_CV_MODEL_FAMILY_COLORS: dict[str, str] = {
+    "cnn": "#9BB8E8",
+    "mlp": "#C8B0E8",
+    "svr": "#7ECFE0",  # cyan-teal (distinct from yellow-greens)
+    "linear": "#F2D4A8",
+    "trees": "#A8C990",  # sage / yellow-green (distinct from SVR)
+    "knn": "#E8A8B8",
+    "other": "#D0D0D0",
+}
+# Short legend text only (model lists live in code comments / paper, not on the figure).
+_CV_MODEL_FAMILY_LEGEND_LABELS: dict[str, str] = {
+    "cnn": "CNN",
+    "mlp": "MLP",
+    "svr": "SVR / kernel ridge",
+    "linear": "Linear",
+    "trees": "Tree ensembles",
+    "knn": "KNN",
+    "other": "Other",
+}
+
+
+def _cv_model_family_key(model: str) -> str:
+    key = str(model).strip().lower()
+    if key in _CV_MODEL_TO_FAMILY:
+        return _CV_MODEL_TO_FAMILY[key]
+    return "other"
+
+
+def _cv_summary_bar_color(model: str) -> str:
+    return _CV_MODEL_FAMILY_COLORS[_cv_model_family_key(model)]
+
+
+def plot_cv_summary(
+    df_scores: pd.DataFrame,
+    outpath: Path,
+    *,
+    title: str,
+    median_baseline: dict[str, float] | None = None,
+) -> None:
     mpl.rcParams.update(mpl.rcParamsDefault)
     # Prefer Arial (requested aesthetic) but fall back gracefully on clusters
     # where Arial isn't installed (avoids noisy "findfont" spam).
@@ -398,16 +536,41 @@ def plot_cv_summary(df_scores: pd.DataFrame, outpath: Path, *, title: str) -> No
         sort_col = (metric_key if singleton_per_model else mean_col)
         order = dfm.sort_values(sort_col, ascending=lower_is_better)["model"].tolist()
 
-        # Original figure size (width_cm × height_cm).
-        fig, ax = plt.subplots(figsize=(18.0 / 2.54, 12.0 / 2.54))
+        # Wide figure so many models + right-side legend do not compress the axes (width_cm × height_cm).
+        fig, ax = plt.subplots(figsize=(32.0 / 2.54, 12.0 / 2.54))
         y_col = metric_key if singleton_per_model else mean_col
-        sns.barplot(data=dfm, x="model", y=y_col, order=order, color="black", alpha=0.5, ax=ax)
-
-        x_pos = np.arange(len(order))
+        x_pos = np.arange(len(order), dtype=float)
         y = dfm.set_index("model").loc[order, y_col].to_numpy(dtype=float)
         if not singleton_per_model:
             yerr = dfm.set_index("model").loc[order, std_col].to_numpy(dtype=float)
-            ax.errorbar(x_pos, y, yerr=yerr, fmt="none", ecolor="black", elinewidth=1.0, capsize=3, capthick=1.0)
+        else:
+            yerr = None
+
+        bar_colors = [_cv_summary_bar_color(m) for m in order]
+        ax.bar(
+            x_pos,
+            y,
+            width=0.72,
+            color=bar_colors,
+            edgecolor="0.35",
+            linewidth=0.6,
+            zorder=2,
+        )
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(order)
+
+        if not singleton_per_model:
+            ax.errorbar(
+                x_pos,
+                y,
+                yerr=yerr,
+                fmt="none",
+                ecolor="black",
+                elinewidth=1.0,
+                capsize=3,
+                capthick=1.0,
+                zorder=3,
+            )
 
         if not singleton_per_model:
             # Overlay per-fold dots (scatter) on top of the mean ± std bars.
@@ -425,6 +588,24 @@ def plot_cv_summary(df_scores: pd.DataFrame, outpath: Path, *, title: str) -> No
                     s=14,
                     alpha=0.85,
                     zorder=4,
+                )
+
+        if median_baseline and metric_key in median_baseline:
+            yb = float(median_baseline[metric_key])
+            if np.isfinite(yb):
+                y_lo0, y_hi0 = ax.get_ylim()
+                pad = 0.04 * (y_hi0 - y_lo0) if y_hi0 > y_lo0 else 0.05
+                if yb < y_lo0:
+                    ax.set_ylim(yb - pad, y_hi0)
+                elif yb > y_hi0:
+                    ax.set_ylim(y_lo0, yb + pad)
+                ax.axhline(
+                    yb,
+                    linestyle=":",
+                    color="0.35",
+                    linewidth=1.4,
+                    zorder=10,
+                    clip_on=False,
                 )
 
         # Add score label (always show value on bar).
@@ -465,8 +646,40 @@ def plot_cv_summary(df_scores: pd.DataFrame, outpath: Path, *, title: str) -> No
         plt.setp(ax.get_xticklabels(), rotation=90, ha="center", va="top")
         sns.despine(ax=ax)
         ax.grid(False)
-        fig.tight_layout()
-        fig.subplots_adjust(bottom=0.38)
+
+        families_present = {_cv_model_family_key(m) for m in order}
+        fam_order = sorted(
+            families_present,
+            key=lambda k: (
+                _CV_MODEL_FAMILY_ORDER.index(k)
+                if k in _CV_MODEL_FAMILY_ORDER
+                else len(_CV_MODEL_FAMILY_ORDER)
+            ),
+        )
+        leg_handles = [
+            Patch(
+                facecolor=_CV_MODEL_FAMILY_COLORS[k],
+                edgecolor="0.35",
+                linewidth=0.5,
+                label=_CV_MODEL_FAMILY_LEGEND_LABELS[k],
+            )
+            for k in fam_order
+        ]
+        ax.legend(
+            handles=leg_handles,
+            loc="center left",
+            bbox_to_anchor=(1.02, 0.5),
+            borderaxespad=0.0,
+            fontsize=11,
+            frameon=True,
+            fancybox=False,
+            edgecolor="0.75",
+            title="Model type",
+            title_fontsize=12,
+        )
+
+        # Leave space on the right for the legend; wide figure keeps the bar area comfortably wide.
+        fig.tight_layout(rect=[0.025, 0.10, 0.80, 0.97])
 
         metric_suffix = metric_key.upper() if metric_key != "ef10" else "EF10"
         # RMSE plot is the canonical `outpath` (e.g. cv_summary_Split....png). Other metrics

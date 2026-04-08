@@ -71,6 +71,19 @@ def main() -> int:
         default=None,
         help="Plot title prefix (default: derived from split_col and --combined-stem).",
     )
+    parser.add_argument(
+        "--excel",
+        type=Path,
+        default=None,
+        help="Dataset Excel for --median-baseline (default: data_processing *_with_splits.xlsx).",
+    )
+    parser.add_argument("--sheet", default=0, help="Excel sheet for --median-baseline")
+    parser.add_argument("--target-col", default="FE", help="Target column for --median-baseline")
+    parser.add_argument(
+        "--median-baseline",
+        action="store_true",
+        help="Add dotted median-of-training baseline line + legend (Median baseline model)",
+    )
     args = parser.parse_args()
 
     repo = _default_repo_root()
@@ -78,7 +91,11 @@ def main() -> int:
 
     import pandas as pd  # pylint: disable=import-error
 
-    from spacerModel.simple_modeling.train_models import plot_cv_summary  # pylint: disable=import-error
+    from spacerModel.simple_modeling.train_models import (  # pylint: disable=import-error
+        median_baseline_cv_metric_means,
+        plot_cv_summary,
+        y_cv_and_groups_from_excel,
+    )
 
     modeling_root = args.modeling_root or (repo / "output" / "modeling")
     modeling_root.mkdir(parents=True, exist_ok=True)
@@ -140,11 +157,25 @@ def main() -> int:
     split_col = str(df_merged["split_col"].iloc[0])
     title = args.title or f"{split_col} CV summary — combined ({stem_tag})"
 
+    default_excel = repo / "output" / "data_processing" / "251129_P8_120Complete_dataset_woCtrl_exogenous_with_splits.xlsx"
+    excel_path = args.excel if args.excel is not None else default_excel
+    median_baseline = None
+    if args.median_baseline:
+        if not excel_path.exists():
+            raise SystemExit(f"--median-baseline: Excel not found: {excel_path}")
+        y_cv, groups = y_cv_and_groups_from_excel(
+            excel_path,
+            sheet=args.sheet,
+            split_col=split_col,
+            target_col=str(args.target_col),
+        )
+        median_baseline = median_baseline_cv_metric_means(y_cv, groups)
+
     out_base = base_run / f"cv_summary_combined_{stem_tag}.png"
     out_unique = modeling_root / f"cv_summary_combined_{ts}_{stem_tag}.png"
 
-    plot_cv_summary(df_merged, out_base, title=f"{title} (RMSE)")
-    plot_cv_summary(df_merged, out_unique, title=f"{title} (RMSE)")
+    plot_cv_summary(df_merged, out_base, title=f"{title} (RMSE)", median_baseline=median_baseline)
+    plot_cv_summary(df_merged, out_unique, title=f"{title} (RMSE)", median_baseline=median_baseline)
 
     print(f"Wrote merged scores: {merged_csv_base}")
     print(f"Wrote merged scores (unique): {merged_csv_unique}")

@@ -229,8 +229,8 @@ def main(argv: list[str] | None = None) -> int:
     regression_like_plot(
         y[mask_gc],
         (df.loc[mask_gc, "GC_frac"] * 100.0).to_numpy(dtype=float),
-        title="Measured FE vs Predicted GC%",
-        xlab="FE (measured)",
+        title="Measured log2-FE vs Predicted GC%",
+        xlab="log2-FE (measured)",
         ylab="GC%",
         outpath=out_dir / "fe_vs_gc_percent.png",
         style=style,
@@ -242,8 +242,8 @@ def main(argv: list[str] | None = None) -> int:
     regression_like_plot(
         y[mask_c],
         (df.loc[mask_c, "C_frac"] * 100.0).to_numpy(dtype=float),
-        title="Measured FE vs Predicted C%",
-        xlab="FE (measured)",
+        title="Measured log2-FE vs Predicted C%",
+        xlab="log2-FE (measured)",
         ylab="C%",
         outpath=out_dir / "fe_vs_c_percent.png",
         style=style,
@@ -255,8 +255,8 @@ def main(argv: list[str] | None = None) -> int:
     regression_like_plot(
         y[mask_tm],
         df.loc[mask_tm, "Tm_wallace"].to_numpy(dtype=float),
-        title="Measured FE vs Predicted Tm (Wallace)",
-        xlab="FE (measured)",
+        title="Measured log2-FE vs Predicted Tm (Wallace)",
+        xlab="log2-FE (measured)",
         ylab="Tm (Wallace, °C)",
         outpath=out_dir / "fe_vs_tm_wallace.png",
         style=style,
