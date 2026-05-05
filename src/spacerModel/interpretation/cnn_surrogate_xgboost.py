@@ -22,6 +22,14 @@ checkpoint must match; real-data rows must have ``SpacerSeq`` of length 32.
 drawn **uniformly** from ``{A,C,G,T}``, independently of other positions and other rows
 (uniform prior over ``4^32`` sequences). Empirical position frequencies and sequence logos
 confirm that prior.
+
+**Contributions:** optional XGBoost ``pred_contribs`` (per-feature contributions vs bias;
+signed). Cost scales with **number of boosted rounds × explained rows**; use
+``--shap-contrib-max-rounds`` to cap trees (much faster on 3000-tree models). Explains up to
+``--shap-synthetic-max-samples`` / ``--shap-real-max-samples`` rows. ``--no-shap`` disables both.
+
+**How to run:** ``PYTHONPATH=src python -m spacerModel.interpretation.cnn_surrogate_xgboost``
+(see ``--help``), or Slurm ``src/spacerModel/scripts/orcd_cnn_surrogate_xgboost.sbatch``.
 """
 
 from __future__ import annotations
@@ -38,7 +46,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.metrics import mean_squared_error, r2_score
-from xgboost import XGBRegressor
+from xgboost import DMatrix, XGBRegressor
 
 from spacerModel.interpretation.linear_position_weights import (
     coefficient_matrix_from_flat,
@@ -131,6 +139,22 @@ def _plot_synthetic_sequence_logos(freq_df: pd.DataFrame, out_dir: Path) -> None
     )
 
 
+def _plot_contribution_sequence_logo(df_pos: pd.DataFrame, outpath: Path, *, title: str) -> None:
+    """Sequence logo for position×base contribution matrices (signed or non-negative)."""
+    import logomaker
+
+    set_plot_style()
+    df = df_pos[["A", "C", "G", "T"]].copy().astype(float).reset_index(drop=True)
+    npos = int(len(df))
+    plt.figure(figsize=(18.0 / 2.54, 5.5 / 2.54))
+    ax = plt.gca()
+    logomaker.Logo(df, ax=ax, color_scheme="classic")
+    ax.set_title(title)
+    ax.set_ylabel("Contribution")
+    _style_logo_position_axis(ax, npos)
+    savefig(outpath)
+
+
 def _importance_full_vector(model: XGBRegressor, n_features: int, *, importance_type: str) -> np.ndarray:
     """Map booster get_score (sparse f*) to a dense length n_features vector."""
     booster = model.get_booster()
@@ -153,6 +177,196 @@ def _metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         "r2": float(r2_score(y_true, y_pred)),
         "n": int(y_true.size),
     }
+
+
+def _run_surrogate_tree_shap(
+    xgb_model: XGBRegressor,
+    X: np.ndarray,
+    rng: np.random.Generator,
+    *,
+    seq_len: int,
+    n_feat: int,
+    out_dir: Path,
+    stem: str,
+    max_samples: int,
+    contrib_max_rounds: int,
+    log: logging.Logger,
+) -> None:
+    """
+    Signed mean per-feature contributions (XGBoost pred_contribs) for the XGB surrogate;
+    one-hot feature order matches CNN/XGB pipeline.
+    """
+    if max_samples <= 0:
+        return
+
+    X = np.asarray(X, dtype=np.float32)
+    if X.ndim != 2 or int(X.shape[1]) != n_feat:
+        raise ValueError(f"SHAP expects X shaped (n, {n_feat}); got {X.shape}")
+
+    n = int(X.shape[0])
+    m = min(int(max_samples), n)
+    if m <= 0:
+        return
+    idx = rng.permutation(n)[:m]
+    X_sub = X[idx]
+
+    t0 = time.perf_counter()
+    log.info(
+        "XGBoost pred_contribs [%s]: explaining %s of %s rows (%s features)…",
+        stem,
+        m,
+        n,
+        n_feat,
+    )
+    booster = xgb_model.get_booster()
+    n_rounds_total = int(booster.num_boosted_rounds())
+    if contrib_max_rounds and int(contrib_max_rounds) > 0:
+        n_use = min(int(contrib_max_rounds), n_rounds_total)
+        if n_use < n_rounds_total:
+            log.info(
+                "pred_contribs [%s]: using first %s / %s boosted rounds (iteration_range; faster, approximate)",
+                stem,
+                n_use,
+                n_rounds_total,
+            )
+        iteration_range: tuple[int, int] = (0, n_use)
+    else:
+        n_use = n_rounds_total
+        iteration_range = (0, n_use)
+
+    contrib = booster.predict(
+        DMatrix(X_sub),
+        pred_contribs=True,
+        iteration_range=iteration_range,
+    )
+
+    elapsed = float(time.perf_counter() - t0)
+    contrib = np.asarray(contrib, dtype=np.float64)
+    if contrib.ndim != 2 or contrib.shape[0] != m:
+        raise RuntimeError(f"Unexpected pred_contribs shape {contrib.shape} for rows={m}")
+    # XGBoost returns n_features + 1 columns (last is bias/base value).
+    if int(contrib.shape[1]) == n_feat + 1:
+        sv = contrib[:, :n_feat]
+        base_values = contrib[:, -1]
+    elif int(contrib.shape[1]) == n_feat:
+        sv = contrib
+        base_values = np.full((m,), np.nan, dtype=np.float64)
+    else:
+        raise RuntimeError(f"pred_contribs width {contrib.shape[1]} incompatible with n_features={n_feat}")
+
+    # Aggregation A (legacy): mean over *all* rows for each one-hot feature.
+    # For one-hot A/C/G/T blocks, this includes many rows where a feature is inactive.
+    mean_signed = sv.mean(axis=0).ravel()
+    mean_abs = np.abs(sv).mean(axis=0).ravel()
+
+    # Aggregation B (new): mean over rows where the one-hot feature is active (==1).
+    # This is often closer to "effect of seeing base b at position p" and avoids
+    # dilution by the ~75% of rows where that base feature is zero.
+    active_mask = np.asarray(X_sub > 0.5, dtype=np.float64)
+    active_n = active_mask.sum(axis=0).ravel()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mean_signed_active = np.divide(
+            (sv * active_mask).sum(axis=0).ravel(),
+            active_n,
+            out=np.zeros_like(mean_signed),
+            where=active_n > 0,
+        )
+        mean_abs_active = np.divide(
+            (np.abs(sv) * active_mask).sum(axis=0).ravel(),
+            active_n,
+            out=np.zeros_like(mean_abs),
+            where=active_n > 0,
+        )
+
+    pd.DataFrame(
+        {"feature_idx": np.arange(n_feat), "mean_shap_signed": mean_signed, "mean_abs_shap": mean_abs}
+    ).to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_by_feature.csv", index=False)
+    pd.DataFrame(
+        {
+            "feature_idx": np.arange(n_feat),
+            "n_active_rows": active_n.astype(int),
+            "mean_shap_signed_active_only": mean_signed_active,
+            "mean_abs_shap_active_only": mean_abs_active,
+        }
+    ).to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_active_only_by_feature.csv", index=False)
+
+    df_signed = coefficient_matrix_from_flat(mean_signed, seq_len=seq_len, alphabet="ACGT")
+    df_signed.to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position_base.csv", index=False)
+    df_abs = coefficient_matrix_from_flat(mean_abs, seq_len=seq_len, alphabet="ACGT")
+    df_abs.to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_by_position_base.csv", index=False)
+    df_signed_active = coefficient_matrix_from_flat(mean_signed_active, seq_len=seq_len, alphabet="ACGT")
+    df_signed_active.to_csv(
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_active_only_by_position_base.csv", index=False
+    )
+    df_abs_active = coefficient_matrix_from_flat(mean_abs_active, seq_len=seq_len, alphabet="ACGT")
+    df_abs_active.to_csv(
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_active_only_by_position_base.csv", index=False
+    )
+
+    plot_weights_by_position(
+        df_signed,
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position.png",
+        title=f"XGBoost surrogate mean SHAP (signed) — {stem.replace('_', ' ')}",
+    )
+    _plot_contribution_sequence_logo(
+        df_signed,
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_logo.png",
+        title=f"XGBoost surrogate mean contribution (signed) logo — {stem.replace('_', ' ')}",
+    )
+    plot_abs_weight_sum(
+        df_signed,
+        out_dir / f"xgb_surrogate_{stem}_shap_abs_component_sum_by_position.png",
+        title=f"XGBoost surrogate Σ|mean SHAP| per position — {stem.replace('_', ' ')}",
+    )
+    _plot_contribution_sequence_logo(
+        df_abs,
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_logo.png",
+        title=f"XGBoost surrogate mean |contribution| logo — {stem.replace('_', ' ')}",
+    )
+    plot_weights_by_position(
+        df_signed_active,
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_active_only_by_position.png",
+        title=f"XGBoost surrogate mean contribution (signed, active-only) — {stem.replace('_', ' ')}",
+    )
+    _plot_contribution_sequence_logo(
+        df_signed_active,
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_active_only_logo.png",
+        title=f"XGBoost surrogate mean contribution (signed, active-only) logo — {stem.replace('_', ' ')}",
+    )
+    plot_abs_weight_sum(
+        df_abs_active,
+        out_dir / f"xgb_surrogate_{stem}_shap_sum_mean_abs_active_only_by_position.png",
+        title=f"XGBoost surrogate Σ mean |contribution| (active-only) per position — {stem.replace('_', ' ')}",
+    )
+    _plot_contribution_sequence_logo(
+        df_abs_active,
+        out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_active_only_logo.png",
+        title=f"XGBoost surrogate mean |contribution| (active-only) logo — {stem.replace('_', ' ')}",
+    )
+
+    summary: dict[str, object] = {
+        "distribution": stem,
+        "n_available_rows": n,
+        "n_explained_rows": m,
+        "n_features": n_feat,
+        "method": "xgboost_pred_contribs",
+        "contrib_boost_rounds_total": n_rounds_total,
+        "contrib_boost_rounds_used": n_use,
+        "contrib_iteration_range": [iteration_range[0], iteration_range[1]],
+        "seconds_pred_contribs": round(elapsed, 3),
+        "mean_base_value": float(np.nanmean(base_values)) if np.isfinite(base_values).any() else None,
+        "aggregation_note": (
+            "Exports include both all-row means and active-only means (for one-hot features, "
+            "active-only aggregates rows where that base-at-position feature is 1)."
+        ),
+    }
+    (out_dir / f"xgb_surrogate_{stem}_shap_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    log.info(
+        "pred_contribs [%s] done in %.2fs → %s",
+        stem,
+        elapsed,
+        out_dir / f"xgb_surrogate_{stem}_shap_summary.json",
+    )
 
 
 def _plot_gain_feature_extras(imp_gain: np.ndarray, seq_len: int, out_dir: Path) -> None:
@@ -397,6 +611,35 @@ def main(argv: list[str] | None = None) -> int:
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
         help="Logging verbosity (default: INFO).",
     )
+    ap.add_argument(
+        "--shap-synthetic-max-samples",
+        type=int,
+        default=8192,
+        help="XGBoost pred_contribs: max synthetic rows to explain (0 skips synthetic contributions).",
+    )
+    ap.add_argument(
+        "--shap-real-max-samples",
+        type=int,
+        default=8192,
+        help="XGBoost pred_contribs: max real CV rows when real eval runs (0 skips real CV contributions).",
+    )
+    ap.add_argument(
+        "--no-shap",
+        action="store_true",
+        help="Disable all pred_contribs contribution exports.",
+    )
+    ap.add_argument(
+        "--shap-contrib-max-rounds",
+        type=int,
+        default=0,
+        metavar="N",
+        dest="shap_contrib_max_rounds",
+        help=(
+            "If >0, pred_contribs uses only the first N boosted rounds (iteration_range [0,N)); "
+            "much faster on large ensembles (e.g. 3000 trees). 0 = all rounds. "
+            "Contributions are approximate when N < total trees."
+        ),
+    )
     args = ap.parse_args(argv)
 
     logging.basicConfig(
@@ -410,6 +653,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.n_synthetic < 100:
         raise ValueError("--n-synthetic should be large (e.g. >= 100).")
+    if int(args.shap_contrib_max_rounds) < 0:
+        raise ValueError("--shap-contrib-max-rounds must be >= 0")
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -563,6 +808,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     log.info("Wrote %s (hexbin=%s)", out_dir / "synthetic_eval_scatter_xgb_vs_cnn.png", syn_hex)
 
+    shap_syn_cap = 0 if args.no_shap else int(args.shap_synthetic_max_samples)
+    _run_surrogate_tree_shap(
+        xgb,
+        x_syn,
+        rng,
+        seq_len=seq_len,
+        n_feat=n_feat,
+        out_dir=out_dir,
+        stem="synthetic",
+        max_samples=shap_syn_cap,
+        contrib_max_rounds=int(args.shap_contrib_max_rounds),
+        log=log,
+    )
+
     # 2b) Real CV rows: CNN vs XGB surrogate vs measured FE (generalization check).
     if not args.no_real_eval:
         log.info("Real-data evaluation: excel=%s", Path(args.excel).resolve())
@@ -684,6 +943,20 @@ def main(argv: list[str] | None = None) -> int:
                     outpath=out_dir / "real_eval_scatter_xgb_vs_cnn.png",
                 )
                 log.info("Real CV scatter plots done")
+
+                shap_real_cap = 0 if args.no_shap else int(args.shap_real_max_samples)
+                _run_surrogate_tree_shap(
+                    xgb,
+                    x_real,
+                    rng,
+                    seq_len=seq_len,
+                    n_feat=n_feat,
+                    out_dir=out_dir,
+                    stem="real_cv",
+                    max_samples=shap_real_cap,
+                    contrib_max_rounds=int(args.shap_contrib_max_rounds),
+                    log=log,
+                )
     else:
         log.info("Skipping real-data eval (--no-real-eval)")
 
@@ -739,6 +1012,12 @@ def main(argv: list[str] | None = None) -> int:
         "random_state": int(args.random_state),
         "real_data_eval": (not bool(args.no_real_eval)),
         "real_data_excel": str(Path(args.excel).resolve()) if not args.no_real_eval else None,
+        "shap": {
+            "disabled": bool(args.no_shap),
+            "synthetic_max_samples": int(args.shap_synthetic_max_samples),
+            "real_cv_max_samples": int(args.shap_real_max_samples),
+            "contrib_max_rounds": int(args.shap_contrib_max_rounds),
+        },
         "xgb_params": {
             "n_estimators": int(args.xgb_n_estimators),
             "max_depth": int(args.xgb_max_depth),

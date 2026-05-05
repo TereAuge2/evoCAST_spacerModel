@@ -206,5 +206,6 @@ webencodings @ file:///home/conda/feedstock_root/build_artifacts/webencodings_17
 websocket-client @ file:///home/conda/feedstock_root/build_artifacts/websocket-client_1759928050786/work
 wheel==0.45.1
 xgboost==3.2.0
+shap==0.46.0
 zipp @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_zipp_1764460141/work
 zstandard==0.25.0

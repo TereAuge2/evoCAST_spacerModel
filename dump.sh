@@ -156,4 +156,10 @@ PYTHONPATH=src python -m spacerModel.inference.picking \
 
 
 #CNN surrogate XGBoost
-sbatch src/spacerModel/scripts/orcd_cnn_surrogate_xgboost.sbatch
+sbatch src/spacerModel/scripts/orcd_cnn_surrogate_xgboost.sbatch \
+  --shap-contrib-max-rounds 400 \
+  --shap-synthetic-max-samples 2048
+
+PYTHONPATH=src python -m spacerModel.interpretation.replot_surrogate_shap \
+  --output-dir output/interpretation/cnn_surrogate_xgboost \
+  --stems synthetic,real_cv

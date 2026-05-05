@@ -223,14 +223,19 @@ def _plot_position_curve(y: np.ndarray, outpath: Path, *, title: str, ylabel: st
 def _plot_logo(df: pd.DataFrame, outpath: Path, *, title: str) -> None:
     import logomaker
 
+    # Logomaker uses a numeric DataFrame index as the x-coordinate for each stack. Our
+    # attribution tables use 1-based indices (1…L); if we pass those through, stacks sit at
+    # x=1…L while tick code assumed x=0…L-1 — leaving "position 1" empty under the first tick.
+    df_logo = df.reset_index(drop=True)
+
     fig, ax = plt.subplots(figsize=(18 / 2.54, 5 / 2.54))
-    logomaker.Logo(df, ax=ax, color_scheme="classic")
+    logomaker.Logo(df_logo, ax=ax, color_scheme="classic")
     ax.set_title(title)
     ax.set_xlabel("position")
     ax.set_ylabel("weight")
-    npos = int(len(df))
+    npos = int(len(df_logo))
     if npos > 0:
-        # logomaker centers each stack at x = 0, 1, …, L-1; ticks at those integers so labels sit under letters
+        # Stacks at x = 0, 1, …, L-1; tick labels 1…L (1-based spacer positions).
         ax.set_xticks(np.arange(npos, dtype=float))
         ax.set_xticklabels([str(i + 1) for i in range(npos)])
         ax.set_xlim(-0.5, npos - 0.5)
