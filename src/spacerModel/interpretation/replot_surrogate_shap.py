@@ -57,55 +57,8 @@ def _plot_logo(df_pos: pd.DataFrame, outpath: Path, *, title: str) -> None:
     savefig(outpath)
 
 
-def _replot_one_stem(out_dir: Path, stem: str) -> None:
-    signed_csv = out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position_base.csv"
-    abs_csv = out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_by_position_base.csv"
-    if not signed_csv.exists() or not abs_csv.exists():
-        raise FileNotFoundError(
-            f"Missing SHAP CSVs for stem={stem!r} in {out_dir}.\n"
-            f"Expected:\n  {signed_csv.name}\n  {abs_csv.name}"
-        )
-
-    df_signed = _read_pos_base_csv(signed_csv)
-    df_abs = _read_pos_base_csv(abs_csv)
-
-    # Signed mean attribution by position/base.
-    plot_weights_by_position(
-        df_signed,
-        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_signed_by_position.png",
-        title=f"XGBoost surrogate mean contribution (signed) — {stem.replace('_', ' ')}",
-    )
-    _plot_logo(
-        df_signed,
-        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_signed_logo.png",
-        title=f"XGBoost surrogate mean contribution (signed) logo — {stem.replace('_', ' ')}",
-    )
-
-    # Legacy-style metric (abs of signed mean): can hide opposing effects via cancellation.
-    plot_abs_weight_sum(
-        df_signed,
-        out_dir / f"xgb_surrogate_{stem}_shap_replot_abs_of_mean_signed_by_position.png",
-        title=f"XGBoost surrogate Σ|mean signed contribution| per position — {stem.replace('_', ' ')}",
-    )
-
-    # Magnitude view from mean absolute contribution (recommended for importance ranking).
-    plot_weights_by_position(
-        df_abs,
-        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_abs_by_position.png",
-        title=f"XGBoost surrogate mean |contribution| by position/base — {stem.replace('_', ' ')}",
-    )
-    _plot_logo(
-        df_abs,
-        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_abs_logo.png",
-        title=f"XGBoost surrogate mean |contribution| logo — {stem.replace('_', ' ')}",
-    )
-    plot_abs_weight_sum(
-        df_abs,
-        out_dir / f"xgb_surrogate_{stem}_shap_replot_sum_mean_abs_by_position.png",
-        title=f"XGBoost surrogate Σ mean |contribution| per position — {stem.replace('_', ' ')}",
-    )
-
-    # Active-only outputs (if available in the run output directory).
+def _replot_one_stem(out_dir: Path, stem: str, *, include_legacy_all_row: bool = False) -> None:
+    # Active-only outputs (primary/recommended).
     signed_active_csv = out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_active_only_by_position_base.csv"
     abs_active_csv = out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_active_only_by_position_base.csv"
     if signed_active_csv.exists() and abs_active_csv.exists():
@@ -136,6 +89,52 @@ def _replot_one_stem(out_dir: Path, stem: str) -> None:
             out_dir / f"xgb_surrogate_{stem}_shap_replot_sum_mean_abs_active_only_by_position.png",
             title=f"XGBoost surrogate Σ mean |contribution| (active-only) per position — {stem.replace('_', ' ')}",
         )
+    else:
+        raise FileNotFoundError(
+            f"Missing active-only SHAP CSVs for stem={stem!r} in {out_dir}.\n"
+            f"Expected:\n  {signed_active_csv.name}\n  {abs_active_csv.name}"
+        )
+
+    if not include_legacy_all_row:
+        return
+
+    # Optional legacy all-row outputs.
+    signed_csv = out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position_base.csv"
+    abs_csv = out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_by_position_base.csv"
+    if not signed_csv.exists() or not abs_csv.exists():
+        return
+    df_signed = _read_pos_base_csv(signed_csv)
+    df_abs = _read_pos_base_csv(abs_csv)
+    plot_weights_by_position(
+        df_signed,
+        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_signed_by_position.png",
+        title=f"XGBoost surrogate mean contribution (all-row signed) — {stem.replace('_', ' ')}",
+    )
+    _plot_logo(
+        df_signed,
+        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_signed_logo.png",
+        title=f"XGBoost surrogate mean contribution (all-row signed) logo — {stem.replace('_', ' ')}",
+    )
+    plot_abs_weight_sum(
+        df_signed,
+        out_dir / f"xgb_surrogate_{stem}_shap_replot_abs_of_mean_signed_by_position.png",
+        title=f"XGBoost surrogate Σ|mean signed contribution| (all-row) — {stem.replace('_', ' ')}",
+    )
+    plot_weights_by_position(
+        df_abs,
+        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_abs_by_position.png",
+        title=f"XGBoost surrogate mean |contribution| (all-row) — {stem.replace('_', ' ')}",
+    )
+    _plot_logo(
+        df_abs,
+        out_dir / f"xgb_surrogate_{stem}_shap_replot_mean_abs_logo.png",
+        title=f"XGBoost surrogate mean |contribution| (all-row) logo — {stem.replace('_', ' ')}",
+    )
+    plot_abs_weight_sum(
+        df_abs,
+        out_dir / f"xgb_surrogate_{stem}_shap_replot_sum_mean_abs_by_position.png",
+        title=f"XGBoost surrogate Σ mean |contribution| (all-row) — {stem.replace('_', ' ')}",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -152,6 +151,11 @@ def main(argv: list[str] | None = None) -> int:
         default="synthetic,real_cv",
         help="Comma-separated stems to replot (default: synthetic,real_cv).",
     )
+    ap.add_argument(
+        "--include-legacy-all-row",
+        action="store_true",
+        help="Also regenerate legacy all-row SHAP plots when corresponding CSVs exist.",
+    )
     args = ap.parse_args(argv)
 
     out_dir = Path(args.output_dir)
@@ -163,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("No stems provided")
 
     for stem in stems:
-        _replot_one_stem(out_dir, stem)
+        _replot_one_stem(out_dir, stem, include_legacy_all_row=bool(args.include_legacy_all_row))
         print(f"[replot-shap] wrote corrected plots for stem={stem!r} in {out_dir}")
 
     return 0

@@ -190,6 +190,7 @@ def _run_surrogate_tree_shap(
     stem: str,
     max_samples: int,
     contrib_max_rounds: int,
+    export_legacy_all_row_shap: bool,
     log: logging.Logger,
 ) -> None:
     """
@@ -278,9 +279,10 @@ def _run_surrogate_tree_shap(
             where=active_n > 0,
         )
 
-    pd.DataFrame(
-        {"feature_idx": np.arange(n_feat), "mean_shap_signed": mean_signed, "mean_abs_shap": mean_abs}
-    ).to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_by_feature.csv", index=False)
+    if export_legacy_all_row_shap:
+        pd.DataFrame(
+            {"feature_idx": np.arange(n_feat), "mean_shap_signed": mean_signed, "mean_abs_shap": mean_abs}
+        ).to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_by_feature.csv", index=False)
     pd.DataFrame(
         {
             "feature_idx": np.arange(n_feat),
@@ -290,10 +292,11 @@ def _run_surrogate_tree_shap(
         }
     ).to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_active_only_by_feature.csv", index=False)
 
-    df_signed = coefficient_matrix_from_flat(mean_signed, seq_len=seq_len, alphabet="ACGT")
-    df_signed.to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position_base.csv", index=False)
-    df_abs = coefficient_matrix_from_flat(mean_abs, seq_len=seq_len, alphabet="ACGT")
-    df_abs.to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_by_position_base.csv", index=False)
+    if export_legacy_all_row_shap:
+        df_signed = coefficient_matrix_from_flat(mean_signed, seq_len=seq_len, alphabet="ACGT")
+        df_signed.to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position_base.csv", index=False)
+        df_abs = coefficient_matrix_from_flat(mean_abs, seq_len=seq_len, alphabet="ACGT")
+        df_abs.to_csv(out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_by_position_base.csv", index=False)
     df_signed_active = coefficient_matrix_from_flat(mean_signed_active, seq_len=seq_len, alphabet="ACGT")
     df_signed_active.to_csv(
         out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_active_only_by_position_base.csv", index=False
@@ -303,26 +306,27 @@ def _run_surrogate_tree_shap(
         out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_active_only_by_position_base.csv", index=False
     )
 
-    plot_weights_by_position(
-        df_signed,
-        out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position.png",
-        title=f"XGBoost surrogate mean SHAP (signed) — {stem.replace('_', ' ')}",
-    )
-    _plot_contribution_sequence_logo(
-        df_signed,
-        out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_logo.png",
-        title=f"XGBoost surrogate mean contribution (signed) logo — {stem.replace('_', ' ')}",
-    )
-    plot_abs_weight_sum(
-        df_signed,
-        out_dir / f"xgb_surrogate_{stem}_shap_abs_component_sum_by_position.png",
-        title=f"XGBoost surrogate Σ|mean SHAP| per position — {stem.replace('_', ' ')}",
-    )
-    _plot_contribution_sequence_logo(
-        df_abs,
-        out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_logo.png",
-        title=f"XGBoost surrogate mean |contribution| logo — {stem.replace('_', ' ')}",
-    )
+    if export_legacy_all_row_shap:
+        plot_weights_by_position(
+            df_signed,
+            out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_by_position.png",
+            title=f"XGBoost surrogate mean SHAP (signed) — {stem.replace('_', ' ')}",
+        )
+        _plot_contribution_sequence_logo(
+            df_signed,
+            out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_logo.png",
+            title=f"XGBoost surrogate mean contribution (signed) logo — {stem.replace('_', ' ')}",
+        )
+        plot_abs_weight_sum(
+            df_signed,
+            out_dir / f"xgb_surrogate_{stem}_shap_abs_component_sum_by_position.png",
+            title=f"XGBoost surrogate Σ|mean SHAP| per position — {stem.replace('_', ' ')}",
+        )
+        _plot_contribution_sequence_logo(
+            df_abs,
+            out_dir / f"xgb_surrogate_{stem}_shap_mean_abs_logo.png",
+            title=f"XGBoost surrogate mean |contribution| logo — {stem.replace('_', ' ')}",
+        )
     plot_weights_by_position(
         df_signed_active,
         out_dir / f"xgb_surrogate_{stem}_shap_mean_signed_active_only_by_position.png",
@@ -356,9 +360,10 @@ def _run_surrogate_tree_shap(
         "seconds_pred_contribs": round(elapsed, 3),
         "mean_base_value": float(np.nanmean(base_values)) if np.isfinite(base_values).any() else None,
         "aggregation_note": (
-            "Exports include both all-row means and active-only means (for one-hot features, "
-            "active-only aggregates rows where that base-at-position feature is 1)."
+            "Primary exports are active-only means (rows where one-hot feature is 1). "
+            "Optional legacy all-row means can be enabled via --export-legacy-all-row-shap."
         ),
+        "export_legacy_all_row_shap": bool(export_legacy_all_row_shap),
     }
     (out_dir / f"xgb_surrogate_{stem}_shap_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     log.info(
@@ -640,6 +645,11 @@ def main(argv: list[str] | None = None) -> int:
             "Contributions are approximate when N < total trees."
         ),
     )
+    ap.add_argument(
+        "--export-legacy-all-row-shap",
+        action="store_true",
+        help="Also export legacy all-row SHAP means/plots (can look misleading for one-hot).",
+    )
     args = ap.parse_args(argv)
 
     logging.basicConfig(
@@ -819,6 +829,7 @@ def main(argv: list[str] | None = None) -> int:
         stem="synthetic",
         max_samples=shap_syn_cap,
         contrib_max_rounds=int(args.shap_contrib_max_rounds),
+        export_legacy_all_row_shap=bool(args.export_legacy_all_row_shap),
         log=log,
     )
 
@@ -955,6 +966,7 @@ def main(argv: list[str] | None = None) -> int:
                     stem="real_cv",
                     max_samples=shap_real_cap,
                     contrib_max_rounds=int(args.shap_contrib_max_rounds),
+                    export_legacy_all_row_shap=bool(args.export_legacy_all_row_shap),
                     log=log,
                 )
     else:
@@ -1017,6 +1029,7 @@ def main(argv: list[str] | None = None) -> int:
             "synthetic_max_samples": int(args.shap_synthetic_max_samples),
             "real_cv_max_samples": int(args.shap_real_max_samples),
             "contrib_max_rounds": int(args.shap_contrib_max_rounds),
+            "export_legacy_all_row_shap": bool(args.export_legacy_all_row_shap),
         },
         "xgb_params": {
             "n_estimators": int(args.xgb_n_estimators),

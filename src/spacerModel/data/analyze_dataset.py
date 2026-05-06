@@ -1072,6 +1072,11 @@ def main(argv: list[str] | None = None) -> int:
                         df_box = df_box[df_box["FE"].notna()]
                         order = sorted(df_box["KMeansCluster"].dropna().unique().tolist())
 
+                        # Export exactly the rows used in the boxplot for downstream replotting/statistics.
+                        boxplot_cols = [c for c in ("KMeansCluster", "FE", "Split", "Gene", "SpacerSeq") if c in df_box.columns]
+                        df_box_export = df_box[boxplot_cols].copy()
+                        df_box_export.to_csv(out_dir / "fe_boxplot_per_cluster_raw.csv", index=False)
+
                         set_plot_style(style)
                         plt.figure(figsize=(style.rect_width_cm / 2.54, style.rect_height_cm / 2.54))
                         ax = sns.boxplot(
@@ -1087,7 +1092,7 @@ def main(argv: list[str] | None = None) -> int:
                         ax.set_xlabel("KMeansCluster")
                         ax.set_ylabel("log2-FE")
                         savefig(out_dir / "fe_boxplot_per_cluster.png", dpi=style.dpi)
-                        log("Saved FE boxplot per cluster")
+                        log("Saved FE boxplot per cluster (+ fe_boxplot_per_cluster_raw.csv)")
             else:
                 log("splits-excel path not found; skipping per-fold logos")
 

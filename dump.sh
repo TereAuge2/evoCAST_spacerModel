@@ -112,7 +112,7 @@ python src/spacerModel/training/plot_hyperopt_predictions.py \
 
 
 #explainaiblity on CNN best model
-N_PER_GROUP=100 sbatch src/spacerModel/scripts/orcd_explain_cnn_layers.sbatch \
+N_PER_GROUP=300 sbatch src/spacerModel/scripts/orcd_explain_cnn_layers.sbatch \
   --checkpoint "models/CNN_best_model.pt"
 
 
