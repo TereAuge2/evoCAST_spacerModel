@@ -2,6 +2,33 @@
 
 Repository for training and evaluating models that predict functional enrichment (log2-FE) from DNA spacer sequences, with utilities for analysis and **genomic scanning** using a trained CNN.
 
+**End-to-end capabilities**
+
+1. Scan a genomic FASTA for YN-PAM protospacer sites (both strands).
+2. Score candidate 32 bp spacers with a trained **CNN** (`models/CNN_best_model.pt`).
+3. Rank spacers per gene and plot predicted log2-FE density.
+4. Pick top spacers and run **NCBI Primer-BLAST** to suggest amplicon primers.
+5. Build **in-silico donor plasmids** — insert the top picked spacer (or top model-ranked spacer if primers are skipped) into the PseCAST donor template and export annotated GenBank files.
+
+## Quick start (Google Colab)
+
+The easiest way to run the full pipeline without a local install is the Colab notebook:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TereAuge2/evoCAST_spacerModel/blob/main/notebooks/evoCAST_spacer_Colab_v2.ipynb)
+
+**Notebook:** [`notebooks/evoCAST_spacer_Colab_v2.ipynb`](notebooks/evoCAST_spacer_Colab_v2.ipynb) (older version: [`notebooks/evoCAST_spacer_Colab.ipynb`](notebooks/evoCAST_spacer_Colab.ipynb))
+
+**What to do**
+
+1. Open the notebook in Colab (link above).
+2. Set **User settings** (optional GitHub token for a private clone; number of spacers to send through Primer-BLAST).
+3. Paste your **FASTA** in the sequence cell — include **400 nt upstream and 400 nt downstream** of the region you want to scan.
+4. **Runtime → Run all**.
+
+**Outputs** (zipped from the notebook): ranked spacer tables (Excel), density plots, primer-picked spacers (`Top_spacers_with_primers.xlsx`), and donor plasmids under `donor_plasmids/` as `PseCAST_{gene}_rank{rank}_donor.gbk` (one per gene; spacer feature labeled `spacer`).
+
+The notebook clones this repo, installs dependencies from [`notebooks/requirements-colab.txt`](notebooks/requirements-colab.txt), and uses the bundled checkpoint. Primer-BLAST requires network access and can take ~1 minute per spacer.
+
 ## Clone the repository
 
 ```bash
@@ -11,16 +38,22 @@ cd evoCAST_spacerModel
 
 Use SSH instead if you prefer: `git clone git@github.com:TereAuge2/evoCAST_spacerModel.git`
 
-## Setup
+## Local setup
 
-- **Python** 3.10+ recommended (see `requirements.txt` comments).
-- Install dependencies:
+Use this path if you want the CLI, training scripts, or to run the notebook locally (e.g. Jupyter).
+
+- **Python** 3.10+ recommended.
+- **Clone** the repo (see above) and install dependencies:
 
   ```bash
   pip install -r requirements.txt
   ```
 
-- Run modules with the package on the path:
+  For a minimal inference-only environment, Colab-style deps are listed in [`notebooks/requirements-colab.txt`](notebooks/requirements-colab.txt) (you still need PyTorch and the checkpoint).
+
+- **PyTorch**: install a build that matches your machine (CPU or CUDA). The `torch>=2.0` line in `requirements.txt` may need to be satisfied via [pytorch.org](https://pytorch.org) instructions for GPU wheels.
+
+- Put the package on the path:
 
   ```bash
   export PYTHONPATH="${PWD}/src${PYTHONPATH:+:$PYTHONPATH}"
@@ -28,15 +61,17 @@ Use SSH instead if you prefer: `git clone git@github.com:TereAuge2/evoCAST_space
 
   Or install the package in editable mode if you add a `pyproject.toml` / `setup.cfg`; until then, `PYTHONPATH=src` is the usual approach.
 
-- **PyTorch**: install a build that matches your machine (CPU or CUDA). The `torch>=2.0` line in `requirements.txt` may need to be satisfied via [pytorch.org](https://pytorch.org) instructions for GPU wheels.
+- **Checkpoint:** use **`models/CNN_best_model.pt`** from the clone (~2 MB) or your own `final_models/CNN_best_model.pt` from a training run.
+
+- **Jupyter:** open [`notebooks/evoCAST_spacer_Colab_v2.ipynb`](notebooks/evoCAST_spacer_Colab_v2.ipynb) from the repo root; set `REPO_DIR` / paths to your clone instead of `/content/...` if you adapt the setup cell.
 
 ## Making predictions (CNN, genomic FASTA)
 
 This flow scores **candidate protospacers** in a genomic sequence using a saved **CNN** checkpoint (`save_torch_best_checkpoint`). The repository includes a released weights file at **`models/CNN_best_model.pt`** (~2.2 MB; optimized retrain from the training pipeline) so you can run inference without rebuilding `output/modeling/.../final_models/`.
 
-### End-to-end workflow (inference → ranked spacers → picking → primers)
+### End-to-end workflow (inference → ranked spacers → picking → primers → donor plasmids)
 
-Run steps **in order** from the repo root with `PYTHONPATH=src` (or your usual `export`).
+Run steps **in order** from the repo root with `PYTHONPATH=src` (or your usual `export`). The Colab notebook runs the same logic interactively (see **Quick start** above).
 
 1. **Inference (scan + extract + score)** — `spacerModel.inference.genomic_spacer_predict_cnn` walks each FASTA record for **YN-PAM** sites, **extracts** 32 bp spacers on both strands, and scores them with the CNN. It writes **`ranked_sequences.xlsx`** (all genes) and **`ranked_sequences_<gene>.xlsx`** per gene in the **directory containing** your `--output` argument (see CLI below). Those tables are the **ranked spacer** inputs for the next steps.
 
@@ -52,6 +87,24 @@ Run steps **in order** from the repo root with `PYTHONPATH=src` (or your usual `
    Use `--number-top-picked`, `--number-bottom-picked`, `--number-random-picked`, and `--gene` (single gene or `all`) as needed; see `--help`.
 
 3. **Primer search only (optional)** — If you want Primer-BLAST on **every row** of a ranked table **without** the picking logic, use `spacerModel.inference.primer` (see below). Picking already performs primer search for the rows it selects; use `primer.py` when you need a fully annotated ranked sheet first.
+
+4. **Donor plasmid constructs (optional)** — `src/cloning/func_automated_cloning.py` inserts a spacer sequence into the PseCAST donor template between fixed flanking motifs and writes GenBank with a **`spacer`** feature. Template: **`data/PseCAST-exampleDonor_template-pSE1405.gbk`**. In the Colab notebook this runs automatically for the **top pick per gene** (first row with a passing primer pair, or top model rank if primers were skipped). Example (Python):
+
+   ```python
+   from pathlib import Path
+   from cloning.func_automated_cloning import insert_sequence_with_feature
+
+   insert_sequence_with_feature(
+       "data/PseCAST-exampleDonor_template-pSE1405.gbk",
+       "output/donor_plasmids/PseCAST_MYGENE_rank1_donor.gbk",
+       flank_5_prime="GTGACCTGCCGTATAGGCAGCTGAAAAT",
+       flank_3_prime="GTGACCTGCCGTATAGGCAGC",
+       insert="ACGT...",  # 32 bp spacer
+       feature_label="spacer",
+   )
+   ```
+
+   See [`src/cloning/cloning_example.py`](src/cloning/cloning_example.py) for batch usage patterns.
 
 **What you need**
 
@@ -90,8 +143,8 @@ PYTHONPATH=src python -m spacerModel.inference.primer \
 
 ## Other functionality
 
+- **In-silico cloning utilities**: `src/cloning/func_automated_cloning.py` (GenBank / SnapGene `.dna` → insert between flanks + feature annotation)
 - **Dataset analysis and logos**: `src/spacerModel/data/analyze_dataset.py`
-- **Simple hypothesis tests on data**:
-`src/spacerModel/simple_modeling/simple_hypothesis_test.py`
+- **Simple hypothesis tests on data**: `src/spacerModel/simple_modeling/simple_hypothesis_test.py`
 - **Training / hyperparameter search**: see `src/spacerModel/training/` (`train_torch.py`, `torch_hyperopt.py`, `retrain_optimized_models.py`, etc.).
 - **CNN explainability** (saliency, layer activations): `src/spacerModel/interpretation/explain_cnn_layers.py`.
