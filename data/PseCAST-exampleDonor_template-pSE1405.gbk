@@ -1,0 +1,1132 @@
+LOCUS       PseCAST-exampleD        3291 bp    DNA     circular SYN 09-JUN-2026
+DEFINITION  .
+ACCESSION   .
+VERSION     .
+KEYWORDS    .
+SOURCE      synthetic DNA construct
+  ORGANISM  synthetic DNA construct
+REFERENCE   1  (bases 1 to 3291)
+  AUTHORS   .
+  TITLE     Direct Submission
+  JOURNAL   Exported Jun 9, 2026 from SnapGene 8.2.2
+            https://www.snapgene.com
+COMMENT     Imported From
+            Path: 
+            /Users/seitzing/Documents/240131_CAST-lentiscreen/02_CAST-crRNA-scre
+            en/17_opt-crRNA-TE
+            Filename: 260129_evoCAST-updated-crRNA+TE_insilico.xlsx
+FEATURES             Location/Qualifiers
+     source          1..3291
+                     /mol_type="other DNA"
+                     /organism="synthetic DNA construct"
+     misc_difference 662..677
+                     /label=Barcode
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Barcode (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     Barcode (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; Barcode (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     Barcode (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="color: #a6acb3"
+     misc_feature    668..695
+                     /label=Gibson
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Gibson (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Gibson (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     Gibson (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     Gibson (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/created by=denniswu"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    complement(678..776)
+                     /label=99bp LE
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: LEFT"
+     misc_feature    complement(683..702)
+                     /label=TnL.3
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="Geneious type: motif"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:50-k57937l"">pDW01-3-CCR5-5_75_145 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:mc-k5d3xrv"">pDW04-4_hROSA26-1_75-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:m4-k5d3ved"">pDW04-3_CCR5-5_75-109  
+                     Copy</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a 
+                     href=""urn:local:.:4qg-jxsu9rn"">pDW02_58_145</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.3 (<a href=""urn:local:.:qt-k5d9vvd"">pSE1149.3</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnL.3 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Transferred From=pDW06_46-109"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; TnL.3 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; TnL.3 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnL.3 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130_template_P3-validation_pSE1114_HEK3-2"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: LEFT"
+     misc_feature    complement(706..725)
+                     /label=TnL.2
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="Geneious type: motif"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.2 (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnL.2 (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; TnL.2 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; TnL.2 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnL.2 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130_template_P3-validation_pSE1114_HEK3-2"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: LEFT"
+     misc_feature    complement(751..770)
+                     /label=TnL.1
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="Geneious type: motif"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnL.1 (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnL.1 (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; TnL.1 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; TnL.1 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnL.1 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130_template_P3-validation_pSE1114_HEK3-2"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="/modified by=simon"
+                     /note="color: #a6acb3; direction: LEFT"
+     misc_feature    complement(782..800)
+                     /label=PBS-2
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-2 (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     PBS-2 (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-2 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-2 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-2 (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-2 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-2 (<a 
+                     href=""urn:local:.:48-j8sfivn"">pSE1130-4_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-2 (<a 
+                     href=""urn:local:.:3r-j8s355y"">pSE1130-2_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     PBS-2 (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="/modified by=simon"
+                     /note="color: #a6acb3; direction: LEFT"
+     promoter        complement(2503..2531)
+                     /label=amp prom
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     amp prom (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/ApEinfo_fwdcolor=#84b0dc"
+                     /note="/ApEinfo_revcolor=#84b0dc"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; amp
+                     prom (<a href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; amp prom (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; amp prom (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; amp prom (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; amp prom (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; amp prom (<a 
+                     href=""urn:local:.:48-j8sfivn"">pSE1130-4_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; amp prom (<a 
+                     href=""urn:local:.:3r-j8s355y"">pSE1130-2_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     amp prom (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="color: #ffffff; direction: LEFT"
+     promoter        2673..2913
+                     /label=hU6
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     hU6 (<a href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/ApEinfo_fwdcolor=#75c6a9"
+                     /note="/ApEinfo_revcolor=#75c6a9"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; hU6
+                     (<a href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; hU6 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; hU6 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; hU6 (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; hU6 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; hU6 (<a 
+                     href=""urn:local:.:48-j8sfivn"">pSE1130-4_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; hU6 (<a 
+                     href=""urn:local:.:3r-j8s355y"">pSE1130-2_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     hU6 (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="color: #ffffff; direction: RIGHT"
+     misc_feature    2922..2949
+                     /label=5' repeat (28nt)
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/ApEinfo_fwdcolor=#b4abac"
+                     /note="/ApEinfo_revcolor=#b4abac"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     repeat PS983 (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; repeat PS983 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     repeat PS983 (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/modified by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_RNA        2950..2981
+                     /label=Variable
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qm-jxsu9rp"">pDW08_58-101</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qn-jxsu9rp"">pDW09_46-101</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qg-jxsu9rn"">pDW02_58_145</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qf-jxsu9rm"">pDW01-1-HEK3-2_75_145</a>)
+                     "
+                     /note="/ApEinfo_fwdcolor=#b4abac"
+                     /note="/ApEinfo_revcolor=#b4abac"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     HEK3-2 (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; HEK3-2 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; HEK3-2 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; HEK3-2 (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; HEK3-2 (<a 
+                     href=""urn:local:.:48-j8sfivn"">pSE1130-4_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; HEK3-2 (<a 
+                     href=""urn:local:.:3r-j8s355y"">pSE1130-2_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     HEK3-2 (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/modified by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    2982..3002
+                     /label=3' repeat (21nt)
+                     /note="/created by=simon"
+                     /note="/modified by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    3003..3012
+                     /label=poly-T
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     poly-T (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/ApEinfo_fwdcolor=#ff9ccd"
+                     /note="/ApEinfo_revcolor=#ff9ccd"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     poly-T (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:1/1; poly-T (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; poly-T (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:1/1; poly-T (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; poly-T (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:1/1; poly-T (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; poly-T (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:1/1; poly-T (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; poly-T (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:1/1; poly-T (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     poly-T (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    3018..3071
+                     /label=seq overhang
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     seq overhang (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; seq
+                     overhang (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; seq overhang (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; seq overhang (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; seq overhang (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; seq overhang (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; seq overhang (<a 
+                     href=""urn:local:.:48-j8sfivn"">pSE1130-4_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; seq overhang (<a 
+                     href=""urn:local:.:3r-j8s355y"">pSE1130-2_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     seq overhang (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     terminator      3050..3097
+                     /label=T7 terminator
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     T7 terminator (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/ApEinfo_fwdcolor=#ff9ccd"
+                     /note="/ApEinfo_revcolor=#ff9ccd"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; T7 
+                     terminator (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; T7 terminator (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; T7 terminator (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; T7 terminator (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; T7 terminator (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; T7 terminator (<a 
+                     href=""urn:local:.:48-j8sfivn"">pSE1130-4_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; T7 terminator (<a 
+                     href=""urn:local:.:3r-j8s355y"">pSE1130-2_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     T7 terminator (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="color: #ffffff; direction: RIGHT"
+     misc_feature    3113..3131
+                     /label=PBS-3
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:4qo-jxsu9rq"">pDW10_46-98</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:4qr-jxsu9rr"">pDW13_75-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:4qq-jxsu9rq"">pDW12_46-88</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:4qk-jxsu9ro"">pDW06_46-109</a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     PBS-3 (<a 
+                     href=""urn:local:.:4ql-jxsu9rp"">pDW07_75-101</a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     PBS-3 (<a 
+                     href=""urn:local:.:4qp-jxsu9rq"">pDW11_75-98</a>)"
+                     /note="/Transferred From=pDW11_75-98"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-3 (<a 
+                     href=""urn:local:.:36-j8s20ys"">pSE1130_template_P3-validat
+                     ion_pSE1114_HEK3-2</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-3 (<a 
+                     href=""urn:local:.:6i-j8shiz7"">pSE1130-11_P3-validation_pS
+                     E1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-3 (<a 
+                     href=""urn:local:.:3e-j8s2802"">pSE1130-1_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-3 (<a 
+                     href=""urn:local:.:6y-j8ss8yy"">pSE1131_template_P3-validat
+                     ion_pSE1115_hROSA26-1</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-3 (<a 
+                     href=""urn:local:.:48-j8sfivn"">pSE1130-4_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Alternative Match=100.00%; 
+                     Adjusted-Interval-0:0/0; PBS-3 (<a 
+                     href=""urn:local:.:3r-j8s355y"">pSE1130-2_P3-validation_pSE
+                     1114_HEK3-2 </a>)"
+                     /note="/X-Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     PBS-3 (<a 
+                     href=""urn:local:.:43-j8sfift"">pSE1130-3_P3-validation_pSE
+                     1114_HEK3-2 Copy</a>)"
+                     /note="/X-Transferred 
+                     From=pSE1130-3_P3-validation_pSE1114_HEK3-2 Copy"
+                     /note="/X-Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    3137..3195
+                     /label=59 bp RE
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    3143..3162
+                     /label=TnR.1
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="Geneious type: motif"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.1 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.1 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.1 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.1 (<a 
+                     href=""urn:local:.:50-k57937l"">pDW01-3-CCR5-5_75_145 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.1 (<a 
+                     href=""urn:local:.:4qf-jxsu9rm"">pDW01-1-HEK3-2_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.1 (<a 
+                     href=""urn:local:.:4qj-jxsu9ro"">pDW05-1-HEK3-2_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.1 (<a 
+                     href=""urn:local:.:lp-k5d3pdu"">pDW05-4-hROSA26-1_58-109  
+                     </a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnR.1 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Transferred From=pDW05-2-AAVS1-5_58-109"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    3164..3183
+                     /label=TnR.2
+                     /note="Derived using Geneious Prime 2023.2.1 'Annotate from
+                     Database' based on nucleotide similarity"
+                     /note="Geneious type: motif"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.2 (<a 
+                     href=""urn:local:.:56-k57956a"">pDW01-4-hROSA26-1_75_145  
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.2 (<a 
+                     href=""urn:local:.:lh-k5d3m13"">pDW05-3-CCR5-5_58-109 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.2 (<a 
+                     href=""urn:local:.:1l-k56dyfk"">pDW01-2-AAVS1-5_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.2 (<a 
+                     href=""urn:local:.:50-k57937l"">pDW01-3-CCR5-5_75_145 
+                     </a>)"
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.2 (<a 
+                     href=""urn:local:.:4qf-jxsu9rm"">pDW01-1-HEK3-2_75_145</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.2 (<a 
+                     href=""urn:local:.:4qj-jxsu9ro"">pDW05-1-HEK3-2_58-109</a>)
+                     "
+                     /note="/Alternative Match=100.00%; Adjusted-Interval-0:0/0;
+                     TnR.2 (<a 
+                     href=""urn:local:.:lp-k5d3pdu"">pDW05-4-hROSA26-1_58-109  
+                     </a>)"
+                     /note="/Primary Match=100.00%; Adjusted-Interval-0:0/0; 
+                     TnR.2 (<a 
+                     href=""urn:local:.:1t-k56e0mu"">pDW05-2-AAVS1-5_58-109</a>)
+                     "
+                     /note="/Transferred From=pDW05-2-AAVS1-5_58-109"
+                     /note="/Transferred Similarity=100.00%"
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    3196..3968
+                     /label=Donor
+                     /note="/created by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+     misc_feature    3196..3410
+                     /label=filler (contains PBS)
+                     /note="/created by=simon"
+                     /note="/modified by=simon"
+                     /note="color: #a6acb3; direction: RIGHT"
+ORIGIN
+        1 tggatgaaat tcagcgtgcg cggcgaaggt gaaggcgatg caaccaatgg taaactgacg
+       61 ctgaagggta tttgcaccac gtgtaaactg ccggttccgt ggccgaccct ggtcactgcg
+      121 ctgacgtatg gtgttcagtg tttcagtcgt tacccggatc acatgaaacg ccacgacttt
+      181 ttcaagtccg cgatgccgga aggttatgtc caagaacgta ccatctcatt taaagatgac
+      241 ggcacctaca aaacgcgcgc cgaagtgaaa ttcgaaggtg atacgctggt taaccgtatt
+      301 gaactgaaag gcatcgattt taaggaagac ggtaatattc tgggccataa actggaatat
+      361 aacttcaatt cgcacaacgt gtacatcacc gcagataagc agaagaacgg tatcaaggct
+      421 aacttcaaga tccgccataa tgtggaagat ggcagcgttc aactggccga atactatcag
+      481 caaaacaccc cgattggtga tggcccggtc ctgctgccgg acaatcatta cctgagcacg
+      541 cagtctgtgc tgagtaaaga tccgaacgaa aagcgtgaga acatggtcct gctggaattc
+      601 gtgaccgcgg ccggcatcac gcacggtatg gacgaactgt ataaaggctc attgacgcat
+      661 tagcttgacc tgagtcattc actatgtcac tgtatggttg cattttatgt cagtgaatgg
+      721 ttgcaggttc attgatatgc ctatccagtg tatgtcacgc tttgcttgca gcgacacctc
+      781 tcttactgcg tgtcagagag caaaaggcca ggaaccgtaa aaaggccgcg ttgctggcgt
+      841 ttttccatag gctccgcccc cctgacgagc atcacaaaaa tcgacgctca agtcagaggt
+      901 ggcgaaaccc gacaggacta taaagatacc aggcgtttcc ccctggaagc tccctcgtgc
+      961 gctctcctgt tccgaccctg ccgcttaccg gatacctgtc cgcctttctc ccttcgggaa
+     1021 gcgtggcgct ttctcatagc tcacgctgta ggtatctcag ttcggtgtag gtcgttcgct
+     1081 ccaagctggg ctgtgtgcac gaaccccccg ttcagcccga ccgctgcgcc ttatccggta
+     1141 actatcgtct tgagtccaac ccggtaagac acgacttatc gccactggca gcagccactg
+     1201 gtaacaggat tagcagagcg aggtatgtag gcggtgctac agagttcttg aagtggtggc
+     1261 ctaactacgg ctacactaga agaacagtat ttggtatctg cgctctgctg aagccagtta
+     1321 ccttcggaaa aagagttggt agctcttgat ccggcaaaca aaccaccgct ggtagcggtg
+     1381 gtttttttgt ttgcaagcag cagattacgc gcagaaaaaa aggatctcaa gaagatcctt
+     1441 tgatcttttc tacggggtct gacgctcagt ggaacgaaaa ctcacgttaa gggattttgg
+     1501 tcatgagatt atcaaaaagg atcttcacct agatcctttt aaattaaaaa tgaagtttta
+     1561 aatcaatcta aagtatatat gagtaaactt ggtctgacag ttaccaatgc ttaatcagtg
+     1621 aggcacctat ctcagcgatc tgtctatttc gttcatccat agttgcctga ctccccgtcg
+     1681 tgtagataac tacgatacgg gagggcttac catctggccc cagtgctgca atgataccgc
+     1741 gagacccacg ctcaccggct ccagatttat cagcaataaa ccagccagcc ggaagggccg
+     1801 agcgcagaag tggtcctgca actttatccg cctccatcca gtctattaat tgttgccggg
+     1861 aagctagagt aagtagttcg ccagttaata gtttgcgcaa cgttgttgcc attgctacag
+     1921 gcatcgtggt gtcacgctcg tcgtttggta tggcttcatt cagctccggt tcccaacgat
+     1981 caaggcgagt tacatgatcc cccatgttgt gcaaaaaagc ggttagctcc ttcggtcctc
+     2041 cgatcgttgt cagaagtaag ttggccgcag tgttatcact catggttatg gcagcactgc
+     2101 ataattctct tactgtcatg ccatccgtaa gatgcttttc tgtgactggt gagtactcaa
+     2161 ccaagtcatt ctgagaatag tgtatgcggc gaccgagttg ctcttgcccg gcgtcaatac
+     2221 gggataatac cgcgccacat agcagaactt taaaagtgct catcattgga aaacgttctt
+     2281 cggggcgaaa actctcaagg atcttaccgc tgttgagatc cagttcgatg taacccactc
+     2341 gtgcacccaa ctgatcttca gcatctttta ctttcaccag cgtttctggg tgagcaaaaa
+     2401 caggaaggca aaatgccgca aaaaagggaa taagggcgac acggaaatgt tgaatactca
+     2461 tactcttcct ttttcaatat tattgaagca tttatcaggg ttattgtctc atgagcggat
+     2521 acatatttga atgtatttag aaaaataaac aaataggggt tccgcgcaca tttccccgaa
+     2581 aagtgccacc tgacgtcgct agctgtacaa aaaagcaggc tttaaaggaa ccaattcagt
+     2641 cgactggatc cggtaccaag gtcgggcagg aagagggcct atttcccatg attccttcat
+     2701 atttgcatat acgatacaag gctgttagag agataattag aattaatttg actgtaaaca
+     2761 caaagatatt agtacaaaat acgtgacgta gaaagtaata atttcttggg tagtttgcag
+     2821 ttttaaaatt atgttttaaa atggactatc atatgcttac cgtaacttga aagtatttcg
+     2881 atttcttggc tttatatatc ttgtggaaag gacgaaacac cgtgacctgc cgtataggca
+     2941 gctgaaaatc tgcttcctcc agagggcgtc gcaggacagc tgtgacctgc cgtataggca
+     3001 gctttttttt ttcctaggct gctgcgctgc tgccaccgct gagcaataac tagcataacc
+     3061 ccttggggcc tctaaacggg tcttgagggg ttttttgctg aaacctcagg cagtatgtgc
+     3121 agctaactct cagaggtgtc gctgcaacca tactttgaca aaatgcaacc atactgtgac
+     3181 aaaattaaag tcatagcttg acctgagtca caaagatctc agggcacagt ctgcatgccg
+     3241 attctgtcct gtcagttacg ccgtcaaagt caatggtcat cacctgtaaa g
+//
