@@ -482,7 +482,7 @@ def run_genomic_cnn_spacer_prediction(
     )
     out = cand.copy()
     out[PREDICTED_LOG2_FE_COL] = np.asarray(pred, dtype=float)
-    out = out.sort_values(PREDICTED_LOG2_FE_COL, ascending=False)
+    out = out.sort_values(PREDICTED_LOG2_FE_COL, ascending=False).reset_index(drop=True)
     # Gene first for readability
     cols = ["Gene"] + [c for c in out.columns if c != "Gene"]
     return out[cols]
