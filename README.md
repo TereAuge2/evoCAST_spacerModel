@@ -25,7 +25,7 @@ The easiest way to run the full pipeline without a local install is the Colab no
 3. Paste your **FASTA** in the sequence cell — include **400 nt upstream and 400 nt downstream** of the region you want to scan.
 4. **Runtime → Run all**.
 
-**Outputs** (zipped from the notebook): ranked spacer tables (Excel), density plots, primer-picked spacers (`Top_spacers_with_primers.xlsx`), and donor plasmids under `donor_plasmids/` as `PseCAST_{gene}_rank1_donor.gbk` (one per gene; first primer pick; spacer reverse-complemented for donor orientation; feature labeled `spacer`).
+**Outputs** (zipped from the notebook): ranked spacer tables (Excel), density plots, primer-picked spacers (`Top_spacers_with_primers.xlsx`), and donor plasmids under `donor_plasmids/` as `PseCAST_{gene}_rank{n}_donor.gbk` (one per gene; first primer pick; feature labeled `spacer`).
 
 The notebook clones this repo, installs dependencies from [`notebooks/requirements-colab.txt`](notebooks/requirements-colab.txt), and uses the bundled checkpoint. Primer-BLAST requires network access and can take ~1 minute per spacer.
 
