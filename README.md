@@ -73,7 +73,9 @@ This flow scores **candidate protospacers** in a genomic sequence using a saved 
 
 Run steps **in order** from the repo root with `PYTHONPATH=src` (or your usual `export`). The Colab notebook runs the same logic interactively (see **Quick start** above).
 
-1. **Inference (scan + extract + score)** — `spacerModel.inference.genomic_spacer_predict_cnn` walks each FASTA record for **YN-PAM** sites, **extracts** 32 bp spacers on both strands, and scores them with the CNN. It writes **`ranked_sequences.xlsx`** (all genes) and **`ranked_sequences_<gene>.xlsx`** per gene in the **directory containing** your `--output` argument (see CLI below). Those tables are the **ranked spacer** inputs for the next steps.
+1. **Inference (scan + extract + score)** — `spacerModel.inference.genomic_spacer_predict_cnn` walks each FASTA record for **YN-PAM** sites, **extracts** 32 bp spacers on both strands, and scores them with the CNN. It writes **`ranked_sequences.xlsx`** (all genes) and **`ranked_sequences_<gene>.xlsx`** per gene in the **directory containing** your `--output` argument (see CLI below). Those tables are the **ranked spacer** inputs for the next steps. Each row also includes:
+   - **`unique_in_locus`**: `True` if a 1-nt sliding scan of the gene FASTA finds exactly one perfect match to that spacer (or its reverse complement).
+   - **`no_similar_spacers`**: `True` if no *other* candidate spacer for the same gene shares **more than 24** identical nucleotides when SpacerSeq strings are compared at fixed alignment (self excluded; no genomic sliding).
 
 2. **Picking (curated sets + Primer-BLAST)** — `spacerModel.inference.picking` reads a ranked table (typically `ranked_sequences.xlsx` or a per-gene workbook) plus the **same reference FASTA** used in step 1. For each gene it can take the **best**-ranked spacers, optionally **worst**-ranked, and **random** picks from the rest, and runs **NCBI Primer-BLAST** (per spacer) to attach primer pairs. Example:
 

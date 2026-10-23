@@ -34,6 +34,9 @@ DEFAULT_SPACER_SEARCH_EDGE_RESERVE = 400
 # Output column for CNN predictions (log2-FE); matches plot axis titles.
 PREDICTED_LOG2_FE_COL = "Predicted_log2_FE"
 
+# Pairwise spacer similarity: identical nucleotide count above this → "similar" (32-mer: >24 same).
+DEFAULT_SIMILAR_SPACER_IDENTICAL_NT = 24
+
 
 def parse_fasta_records(path: Path) -> list[tuple[str, str]]:
     """
@@ -83,6 +86,91 @@ def load_genomic_sequence(path: Path) -> str:
 def reverse_complement(seq: str) -> str:
     comp = str.maketrans("ACGTacgt", "TGCAtgca")
     return seq.translate(comp)[::-1]
+
+
+def count_perfect_matches_in_locus(seq: str, spacer: str) -> int:
+    """
+    Count 1-nt sliding windows of ``len(spacer)`` on ``seq`` that are a perfect match to
+    ``spacer`` or its reverse complement (Hamming distance 0). Each window position is
+    counted at most once.
+    """
+    seq_u = seq.upper()
+    spacer_u = "".join(c for c in spacer.upper() if c in "ACGT")
+    L = len(spacer_u)
+    if L == 0 or len(seq_u) < L:
+        return 0
+    rc = reverse_complement(spacer_u)
+    n = 0
+    for i in range(len(seq_u) - L + 1):
+        w = seq_u[i : i + L]
+        if w == spacer_u or w == rc:
+            n += 1
+    return n
+
+
+def identical_nt_count(a: str, b: str) -> int:
+    """Number of positions identical between two equal-length strings (Hamming identity)."""
+    if len(a) != len(b):
+        n = min(len(a), len(b))
+        return sum(a[i] == b[i] for i in range(n))
+    return sum(x == y for x, y in zip(a, b))
+
+
+def add_spacer_uniqueness_columns(
+    df: pd.DataFrame,
+    gene_to_seq: dict[str, str],
+    *,
+    similar_identical_nt_max: int = DEFAULT_SIMILAR_SPACER_IDENTICAL_NT,
+) -> pd.DataFrame:
+    """
+    Add ``unique_in_locus`` and ``no_similar_spacers`` (boolean) per row.
+
+    - ``unique_in_locus``: True iff the spacer DNA string has exactly one perfect match
+      (forward or reverse-complement window) when slid along that gene's FASTA sequence.
+    - ``no_similar_spacers``: True iff no *other* candidate spacer for the same gene shares
+      more than ``similar_identical_nt_max`` identical nucleotides when the two SpacerSeq
+      strings are compared at fixed alignment (no genomic sliding). Self is excluded.
+    """
+    if df.empty:
+        out = df.copy()
+        out["unique_in_locus"] = pd.Series(dtype=bool)
+        out["no_similar_spacers"] = pd.Series(dtype=bool)
+        return out
+    if "SpacerSeq" not in df.columns or "Gene" not in df.columns:
+        raise ValueError("add_spacer_uniqueness_columns requires Gene and SpacerSeq columns")
+
+    out = df.copy()
+    unique_col = pd.Series(False, index=out.index, dtype=bool)
+    similar_col = pd.Series(True, index=out.index, dtype=bool)
+    thresh = int(similar_identical_nt_max)
+
+    for gene, group in out.groupby("Gene", sort=False):
+        idxs = group.index.tolist()
+        spacers = [str(out.at[i, "SpacerSeq"]).upper() for i in idxs]
+        seq = gene_to_seq.get(str(gene), gene_to_seq.get(gene))  # type: ignore[arg-type]
+
+        if seq is not None:
+            seq_u = str(seq).upper()
+            match_cache: dict[str, int] = {}
+            for i, sp in zip(idxs, spacers):
+                if sp not in match_cache:
+                    match_cache[sp] = count_perfect_matches_in_locus(seq_u, sp)
+                unique_col.at[i] = match_cache[sp] == 1
+        else:
+            for i in idxs:
+                unique_col.at[i] = False
+
+        n_sp = len(idxs)
+        for j in range(n_sp):
+            sj = spacers[j]
+            has_similar = any(
+                identical_nt_count(sj, spacers[k]) > thresh for k in range(n_sp) if k != j
+            )
+            similar_col.at[idxs[j]] = not has_similar
+
+    out["unique_in_locus"] = unique_col
+    out["no_similar_spacers"] = similar_col
+    return out
 
 
 def extract_spacers_with_yn_pam_both_strands(
@@ -413,6 +501,9 @@ def run_genomic_cnn_spacer_prediction(
 
     Returns a dataframe sorted by ``Predicted_log2_FE`` (descending). Empty if no sites.
     ``spacer_len`` defaults to ``n_features//4`` from the checkpoint.
+
+    Also adds ``unique_in_locus`` and ``no_similar_spacers`` (see
+    :func:`add_spacer_uniqueness_columns`).
     """
     dev = device if isinstance(device, torch.device) else resolve_device(str(device))
     model, pack = load_torch_best_checkpoint(Path(checkpoint), device=dev)
@@ -482,6 +573,8 @@ def run_genomic_cnn_spacer_prediction(
     )
     out = cand.copy()
     out[PREDICTED_LOG2_FE_COL] = np.asarray(pred, dtype=float)
+    gene_to_seq = {g: s for g, s in gene_seqs}
+    out = add_spacer_uniqueness_columns(out, gene_to_seq)
     out = out.sort_values(PREDICTED_LOG2_FE_COL, ascending=False).reset_index(drop=True)
     # Gene first for readability
     cols = ["Gene"] + [c for c in out.columns if c != "Gene"]

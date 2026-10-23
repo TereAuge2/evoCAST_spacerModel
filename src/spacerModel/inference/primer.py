@@ -133,6 +133,9 @@ FWD_MAX_PAST_SPACER_END = 20
 # Reverse primer 5′ on top strand (``r_lo``) must be ≥ this many nt **past spacer end** ``se``:
 # ``r_lo >= se + REV_MIN_PAST_SPACER_END``.
 REV_MIN_PAST_SPACER_END = 130
+# Max inclusive overlap (nt) allowed between either primer oligo span and the spacer interval.
+# Pairs with more than this many shared nt on fwd or rev are discarded.
+MAX_PRIMER_SPACER_OVERLAP_NT = 5
 NCBI_DELAY_SEC = 0.35
 POLL_INTERVAL_SEC = 3.0
 POLL_MAX_WAIT_SEC = 600.0
@@ -152,9 +155,10 @@ NCBI POST body:
     advanced Primer3 constraints, salt/thermo tables, specificity display limits, …), aligned with
     NCBI ``index.cgi`` defaults. Use --ncbi-minimal-post only for a smaller request (e.g. connection
     issues); primer quality may differ from the browser.
-  • After NCBI returns, only pairs passing pair_matches_design_rules() are kept.
+  • After NCBI returns, only pairs passing pair_matches_design_rules() are kept
+    (placement vs spacer, product size, and max %d nt primer–spacer overlap).
   • Typical product range: %d–%d bp (same as client filter).
-""" % (NCBI_POST_PRODUCT_MIN, NCBI_POST_PRODUCT_MAX)
+""" % (MAX_PRIMER_SPACER_OVERLAP_NT, NCBI_POST_PRODUCT_MIN, NCBI_POST_PRODUCT_MAX)
 
 
 def load_gene_sequences(fasta: Path) -> dict[str, str]:
@@ -374,6 +378,18 @@ def _pair_to_json_serializable(pair: dict[str, Any]) -> dict[str, Any]:
     return d
 
 
+def _inclusive_interval_overlap_nt(
+    a_lo: int,
+    a_hi: int,
+    b_lo: int,
+    b_hi: int,
+) -> int:
+    """Length of overlap between two inclusive 1-based intervals (0 if disjoint)."""
+    lo = max(int(a_lo), int(b_lo))
+    hi = min(int(a_hi), int(b_hi))
+    return max(0, hi - lo + 1)
+
+
 def matching_primer_pairs(
     pairs: list[dict[str, Any]],
     spacer_start_1b: int,
@@ -381,6 +397,7 @@ def matching_primer_pairs(
     *,
     fwd_max_past_spacer_end: int = FWD_MAX_PAST_SPACER_END,
     rev_min_past_spacer_end: int = REV_MIN_PAST_SPACER_END,
+    max_primer_spacer_overlap_nt: int = MAX_PRIMER_SPACER_OVERLAP_NT,
 ) -> list[dict[str, Any]]:
     """All pairs that satisfy placement and product rules (not just the first)."""
     out: list[dict[str, Any]] = []
@@ -391,6 +408,7 @@ def matching_primer_pairs(
             spacer_end_1b,
             fwd_max_past_spacer_end=fwd_max_past_spacer_end,
             rev_min_past_spacer_end=rev_min_past_spacer_end,
+            max_primer_spacer_overlap_nt=max_primer_spacer_overlap_nt,
         ):
             out.append(p)
     return out
@@ -987,6 +1005,7 @@ def pair_matches_design_rules(
     product_max: int = PRODUCT_MAX,
     fwd_max_past_spacer_end: int = FWD_MAX_PAST_SPACER_END,
     rev_min_past_spacer_end: int = REV_MIN_PAST_SPACER_END,
+    max_primer_spacer_overlap_nt: int = MAX_PRIMER_SPACER_OVERLAP_NT,
 ) -> bool:
     """
     Targeting-strand template (5′→3′): forward primer is left; spacer [ss, se] must lie in the amplicon.
@@ -996,6 +1015,8 @@ def pair_matches_design_rules(
       **spacer end** ``se``: ``f_hi <= se + fwd_max_past_spacer_end``.
     - Reverse primer 5′ on the top strand (``r_lo``, inner edge toward the amplicon) must be at least
       ``rev_min_past_spacer_end`` nt **past** ``se``: ``r_lo >= se + rev_min_past_spacer_end``.
+    - Neither oligo ``fwd_span`` / ``rev_span`` may overlap the spacer by more than
+      ``max_primer_spacer_overlap_nt`` inclusive nt (default 5).
     Product length is bounded separately by ``product_min`` / ``product_max``.
     """
     plen = pair.get("product_len")
@@ -1020,6 +1041,12 @@ def pair_matches_design_rules(
         return False
     if r_lo < se + int(rev_min_past_spacer_end):
         return False
+
+    max_ov = int(max_primer_spacer_overlap_nt)
+    if _inclusive_interval_overlap_nt(f_lo, f_hi, ss, se) > max_ov:
+        return False
+    if _inclusive_interval_overlap_nt(r_lo, r_hi, ss, se) > max_ov:
+        return False
     return True
 
 
@@ -1030,6 +1057,7 @@ def first_matching_primer_pair(
     *,
     fwd_max_past_spacer_end: int = FWD_MAX_PAST_SPACER_END,
     rev_min_past_spacer_end: int = REV_MIN_PAST_SPACER_END,
+    max_primer_spacer_overlap_nt: int = MAX_PRIMER_SPACER_OVERLAP_NT,
     pairs: list[dict[str, Any]] | None = None,
 ) -> tuple[str, str] | tuple[None, None]:
     parsed = pairs if pairs is not None else parse_primer_blast_pairs(html)
@@ -1040,6 +1068,7 @@ def first_matching_primer_pair(
             spacer_end_1b,
             fwd_max_past_spacer_end=fwd_max_past_spacer_end,
             rev_min_past_spacer_end=rev_min_past_spacer_end,
+            max_primer_spacer_overlap_nt=max_primer_spacer_overlap_nt,
         ):
             return p["forward_seq"], p["reverse_seq"]
     return None, None
