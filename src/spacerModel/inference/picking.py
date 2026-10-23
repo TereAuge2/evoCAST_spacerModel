@@ -22,7 +22,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from spacerModel.inference.inference import PREDICTED_LOG2_FE_COL
+from spacerModel.inference.inference import PREDICTED_LOG2_FE_COL, add_spacer_uniqueness_columns
 from spacerModel.inference.primer import (
     DEFAULT_DOWNSTREAM,
     DEFAULT_NCBI_NUM_PRIMER_PAIRS,
@@ -458,7 +458,9 @@ def run_picking(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Returns ``(ranked_with_rank, combined_picks)`` where ``combined_picks`` has primer columns
-    plus ``pick_type`` and original ``rank``.
+    plus ``pick_type``, original ``rank``, and uniqueness flags ``unique_in_locus`` /
+    ``no_similar_spacers`` (computed only for picked rows; similarity is checked against
+    the full ranked table per gene).
     """
     ranked = add_within_gene_rank(ranked)
     ranked = _ensure_strand(ranked)
@@ -516,6 +518,12 @@ def run_picking(
             kind="mergesort",
         )
         combined = combined.drop(columns=["_po"])
+        # Locus uniqueness / pairwise similarity only for picked rows (full table is too slow).
+        combined = add_spacer_uniqueness_columns(
+            combined,
+            gene_to_seq,
+            similarity_against=ranked,
+        )
 
     return ranked, combined
 

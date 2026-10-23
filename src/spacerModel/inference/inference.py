@@ -121,15 +121,20 @@ def add_spacer_uniqueness_columns(
     gene_to_seq: dict[str, str],
     *,
     similar_identical_nt_max: int = DEFAULT_SIMILAR_SPACER_IDENTICAL_NT,
+    similarity_against: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
-    Add ``unique_in_locus`` and ``no_similar_spacers`` (boolean) per row.
+    Add ``unique_in_locus`` and ``no_similar_spacers`` (boolean) per row of ``df``.
+
+    Intended for a small set of rows (e.g. primer-picked spacers), not the full ranked table.
 
     - ``unique_in_locus``: True iff the spacer DNA string has exactly one perfect match
       (forward or reverse-complement window) when slid along that gene's FASTA sequence.
-    - ``no_similar_spacers``: True iff no *other* candidate spacer for the same gene shares
-      more than ``similar_identical_nt_max`` identical nucleotides when the two SpacerSeq
-      strings are compared at fixed alignment (no genomic sliding). Self is excluded.
+    - ``no_similar_spacers``: True iff no *other* spacer in the comparison pool for the same
+      gene shares more than ``similar_identical_nt_max`` identical nucleotides when SpacerSeq
+      strings are compared at fixed alignment (no genomic sliding). Self is excluded by
+      SpacerStart/SpacerEnd when available. The pool is ``similarity_against`` if given,
+      otherwise ``df`` itself.
     """
     if df.empty:
         out = df.copy()
@@ -143,6 +148,9 @@ def add_spacer_uniqueness_columns(
     unique_col = pd.Series(False, index=out.index, dtype=bool)
     similar_col = pd.Series(True, index=out.index, dtype=bool)
     thresh = int(similar_identical_nt_max)
+    pool = similarity_against if similarity_against is not None else out
+    if "SpacerSeq" not in pool.columns or "Gene" not in pool.columns:
+        raise ValueError("similarity_against requires Gene and SpacerSeq columns")
 
     for gene, group in out.groupby("Gene", sort=False):
         idxs = group.index.tolist()
@@ -160,13 +168,30 @@ def add_spacer_uniqueness_columns(
             for i in idxs:
                 unique_col.at[i] = False
 
-        n_sp = len(idxs)
-        for j in range(n_sp):
+        pool_g = pool.loc[pool["Gene"] == gene]
+        pool_seqs = [str(s).upper() for s in pool_g["SpacerSeq"].tolist()]
+        pool_starts = (
+            pool_g["SpacerStart"].tolist() if "SpacerStart" in pool_g.columns else [None] * len(pool_g)
+        )
+        pool_ends = (
+            pool_g["SpacerEnd"].tolist() if "SpacerEnd" in pool_g.columns else [None] * len(pool_g)
+        )
+
+        for j, i in enumerate(idxs):
             sj = spacers[j]
-            has_similar = any(
-                identical_nt_count(sj, spacers[k]) > thresh for k in range(n_sp) if k != j
-            )
-            similar_col.at[idxs[j]] = not has_similar
+            ss = out.at[i, "SpacerStart"] if "SpacerStart" in out.columns else None
+            se = out.at[i, "SpacerEnd"] if "SpacerEnd" in out.columns else None
+            has_similar = False
+            for k, sk in enumerate(pool_seqs):
+                if ss is not None and se is not None and pool_starts[k] is not None:
+                    if int(pool_starts[k]) == int(ss) and int(pool_ends[k]) == int(se):
+                        continue
+                elif sk == sj and k == j and similarity_against is None:
+                    continue
+                if identical_nt_count(sj, sk) > thresh:
+                    has_similar = True
+                    break
+            similar_col.at[i] = not has_similar
 
     out["unique_in_locus"] = unique_col
     out["no_similar_spacers"] = similar_col
@@ -502,8 +527,8 @@ def run_genomic_cnn_spacer_prediction(
     Returns a dataframe sorted by ``Predicted_log2_FE`` (descending). Empty if no sites.
     ``spacer_len`` defaults to ``n_features//4`` from the checkpoint.
 
-    Also adds ``unique_in_locus`` and ``no_similar_spacers`` (see
-    :func:`add_spacer_uniqueness_columns`).
+    Uniqueness flags (``unique_in_locus`` / ``no_similar_spacers``) are added later for
+    primer-picked spacers only — see :func:`spacerModel.inference.picking.run_picking`.
     """
     dev = device if isinstance(device, torch.device) else resolve_device(str(device))
     model, pack = load_torch_best_checkpoint(Path(checkpoint), device=dev)
@@ -573,8 +598,6 @@ def run_genomic_cnn_spacer_prediction(
     )
     out = cand.copy()
     out[PREDICTED_LOG2_FE_COL] = np.asarray(pred, dtype=float)
-    gene_to_seq = {g: s for g, s in gene_seqs}
-    out = add_spacer_uniqueness_columns(out, gene_to_seq)
     out = out.sort_values(PREDICTED_LOG2_FE_COL, ascending=False).reset_index(drop=True)
     # Gene first for readability
     cols = ["Gene"] + [c for c in out.columns if c != "Gene"]
